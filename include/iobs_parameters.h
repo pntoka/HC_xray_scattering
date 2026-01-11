@@ -73,7 +73,6 @@ public:
         cspData[0].nu = nu;
         cspData[0].lm = nu/alpha;
         cspData[0].sig1 = sig1;
-        cspData[0].eps1 = 0.0;
         cspData[0].lcc = lcc;
         cspData[0].q = q;
         cspData[0].concn = 1;
@@ -91,7 +90,6 @@ public:
         data.nu = nu;
         data.lm = nu/alpha;
         data.sig1 = sig1;
-        data.eps1 = 0.0;
         data.lcc = lcc;
         data.q = q;
         data.concn = 1;
