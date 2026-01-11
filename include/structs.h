@@ -63,8 +63,8 @@ struct csp{
 	double nu;
 	double lm;
 	double sig1;
-	//Oliver: eps1 added
-	double eps1;
+	// //Oliver: eps1 added
+	// double eps1;
 	double lcc;
 	double q;
 	double concn; // 0 <= concentration of phase <= 1

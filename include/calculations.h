@@ -13,29 +13,7 @@
 
 class Calculations{
 
-private:
-	float *IcomC_x; //array for interpolation
-	float *IcomC_y; //array for interpolation
-	int sizeOf_IcomC; //size of array
-
-		/*
-	float *fN_x; //array for interpolation
-	float *fN_y; //array for interpolation
-	int sizeOf_fN; //size of array
-
-	float *fO_x; //array for interpolation
-	float *fO_y; //array for interpolation
-	int sizeOf_fO; //size of array
-	*/
-
 public:
-
-	//constructor including initialization of interpolation functions
-	//Calculations(std::string dataPath);
-	Calculations();
-
-	//destructor including release of memory
-	~Calculations();
 
 	//degree to rad
 	double degToRad(double deg);
@@ -93,8 +71,6 @@ public:
 	double IincC(bool useQ, double b, double s, double wavelength);
 
 	//polarization factor P (P_ to avoid problems with a C macro in wstp.h)
-	//double P_(double s, double wavelength);
-	// double P_(double s, double wavelength, bool polarized, double polarizationDegree);
 	double PTheta_(double theta, bool polarized, double polarizationDegree);
 
 	//I_intra - scattering from the layers
@@ -102,40 +78,20 @@ public:
 	double shk(int h, int k, double lcc);
     double g(double q, double s_hk, double s);
 	double g0(double q);
-	//std::complex<double> F(double m, double nu, double lm, double lcc, double sig1, int h, int k, double s);
 
     //analytical expression for F without epsilon_1
     std::complex<double> F(double m, double nu, double lm, double lcc, double sig1, double s_hk, double s);
-
-    //numerical expression for F with epsilon_1
-    //double F_esp1_ohneInt(int m, double r, double nu, double lm, double lcc, double sig1, double eps1, int h, int k, double s);
-    //double F_eps1(double nu, double lm, double lcc, double sig1, double eps1, int h, int k, double s);
-    //double F_esp1_ohneInt(double r, double nu, double lm, double lcc, double sig1, double eps1, int h, int k, double s);
-
-    double Pl(double r, double nu, double lm, double s);
-    double Pd(double r, double lcc, double sig1, double eps1, double s_hk);
-    double PlPd(double r, double nu, double lm, double lcc, double sig1, double eps1, double s_hk, double s);
-    double Integrand(double r, double nu, double lm, double lcc, double sig1, double eps1, double shk, double s);
-    double Integrand_V2(double r, double nu, double lm, double lcc, double sig1, double eps1, double shk, double s);
-    //float Integrand_Ronly(float r);
 
 	//analytical expression for J_hk without epsilon_1
 	double Jhk(double nu, double lm, double lcc, double sig1, int h, int k, double q, double s);
 	double JhkXprefactor(double nu, double lm, double lcc, double sig1, int h, int k, double q, double s); // J_hk times prefactor
 	int Jhk_prefactor(int h, int k); //prefactor for J_hk
 
-    //analytical expression for J_hk with epsilon_1
-    double Jhk_eps1(double nu, double lm, double lcc, double sig1, double eps1, int h, int k, double q, double s);
-    double Jhk_eps1_V2(double nu, double lm, double lcc, double sig1, double eps1, int h, int k, double q, double s);
-    double JhkXprefactor_eps1(double nu, double lm, double lcc, double sig1, double eps1, int h, int k, double q, double s); // J_hk times prefactor
-
 	double n0S0(double lcc);
     
     //analytical expression for Iintra with epsilon_1
 	double Iintra(double nu, double lm, double lcc, double sig1, double q, double s);
-    //analytical expression for Iintra with epsilon_1
-    double Iintra_eps1(double nu, double lm, double lcc, double sig1, double eps1, double q, double s);
-
+  
 
 	//I_inter - scattering from the stacking of layers
 

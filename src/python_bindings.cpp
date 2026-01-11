@@ -32,7 +32,6 @@ PYBIND11_MODULE(iobs_ngc, m) {
             if (dict.contains("nu")) params.nu = dict["nu"].cast<double>();
             if (dict.contains("lm")) params.lm = dict["lm"].cast<double>();
             if (dict.contains("sig1")) params.sig1 = dict["sig1"].cast<double>();
-            if (dict.contains("eps1")) params.eps1 = dict["eps1"].cast<double>();
             if (dict.contains("lcc")) params.lcc = dict["lcc"].cast<double>();
             if (dict.contains("q")) params.q = dict["q"].cast<double>();
             if (dict.contains("concn")) params.concn = dict["concn"].cast<double>();
@@ -48,7 +47,6 @@ PYBIND11_MODULE(iobs_ngc, m) {
     .def_readwrite("nu", &csp::nu)
     .def_readwrite("lm", &csp::lm)
     .def_readwrite("sig1", &csp::sig1)
-    .def_readwrite("eps1", &csp::eps1)
     .def_readwrite("lcc", &csp::lcc)
     .def_readwrite("q", &csp::q)
     .def_readwrite("concn", &csp::concn);
