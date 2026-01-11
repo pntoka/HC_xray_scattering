@@ -2,15 +2,18 @@
 #include <iostream>
 #include <array>
 #include <stdexcept>
+#include <flint/flint.h>
+#include <flint/acb.h>
+#include <flint/acb_hypgeom.h>
 #include <complex>
 typedef std::complex<double> fcomplex;
 
 #include "calculations.h"
 #include <boost/math/special_functions/gamma.hpp>
-#include "nrRecipes/nr3.h"
+// #include "nrRecipes/nr3.h"
 // #include "nrRecipes/gamma.h"
-#include "nrRecipes/hypgeo.h"
-#include "nrRecipes/bessel.h"
+// #include "nrRecipes/hypgeo.h"
+// #include "nrRecipes/bessel.h"
 // #include "nrRecipes/gauss_wgts.h"
 
 
@@ -207,14 +210,46 @@ double Calculations::factln(int n) {
 
 //hypergeometrical function 2F1
 std::complex<double> Calculations::hypgeo2F1(double a, double b, double c, std::complex<double> z){
-	fcomplex a_ = Complex(a,0.);
-	fcomplex b_ = Complex(b,0.);
-	fcomplex c_ = Complex(c,0.);
-	fcomplex z_ = Complex(z.real(), z.imag());
-	// fcomplexNR erg_ = hypgeo(a_,b_,c_,z_);
-	fcomplex erg_ = hypgeo(a_,b_,c_,z_);
-	std::complex<double> erg (erg_.real(), erg_.imag());
-	return erg;
+    const slong prec = 256;
+    
+    // Initialize acb variables
+    acb_t a_acb, b_acb, c_acb, z_acb, result;
+    acb_init(a_acb);
+    acb_init(b_acb);
+    acb_init(c_acb);
+    acb_init(z_acb);
+    acb_init(result);
+    
+    // Set input parameters
+    acb_set_d(a_acb, a);
+    acb_set_d(b_acb, b);
+    acb_set_d(c_acb, c);
+    acb_set_d_d(z_acb, z.real(), z.imag());
+    
+    // Compute 2F1
+    acb_hypgeom_2f1(result, a_acb, b_acb, c_acb, z_acb, 0, prec);
+    
+	// Extract real and imaginary parts
+	arb_t re, im;
+	arb_init(re);
+	arb_init(im);
+	
+	acb_get_real(re, result);
+	acb_get_imag(im, result);
+	
+	double real_part = arf_get_d(arb_midref(re), ARF_RND_NEAR);
+	double imag_part = arf_get_d(arb_midref(im), ARF_RND_NEAR);
+	
+	// Clean up
+	arb_clear(re);
+	arb_clear(im);
+    acb_clear(a_acb);
+    acb_clear(b_acb);
+    acb_clear(c_acb);
+    acb_clear(z_acb);
+    acb_clear(result);
+    
+    return std::complex<double>(real_part, imag_part);
 }
 
 
