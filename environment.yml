@@ -1,0 +1,44 @@
+name: iobs_ngc_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python
+  - python >=3.8
+  
+  # Build tools
+  - cmake >=3.15
+  - compilers           # Provides platform-appropriate C/C++ compilers
+  - ninja               # Fast build system (optional but recommended)
+  
+  # Build dependencies (host)
+  - pybind11 >=2.10.0
+  - scikit-build-core >=0.5.0
+  
+  # Library dependencies
+  - flint
+  - boost-cpp
+  - gmp
+  - mpfr
+  
+  # Data science & visualization
+  - numpy
+  - pandas
+  - matplotlib
+  - scipy
+  - seaborn
+  
+  # Jupyter notebook support
+  - ipykernel
+  - jupyter
+  - notebook
+  - ipywidgets
+  - nb_conda_kernels    # Auto-discovers conda envs with ipykernel installed
+  
+  # Pip for installing the local package
+  - pip
+  
+  # Install local package via pip (editable mode)
+  - pip:
+      - -e .
+      - ipykernel --install --user --name=iobs_ngc_env
