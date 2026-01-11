@@ -7,7 +7,6 @@
 #include <flint/acb_hypgeom.h>
 #include <complex>
 typedef std::complex<double> fcomplex;
-
 #include "calculations.h"
 #include <boost/math/special_functions/gamma.hpp>
 
