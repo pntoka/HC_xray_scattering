@@ -1,4 +1,6 @@
 include CMakeLists.txt
-include cmake/*.cmake
-recursive-include include *.h
-recursive-include src *.cpp
+include pyproject.toml
+include README.md
+recursive-include cmake *.cmake
+recursive-include include *.h *.hpp
+recursive-include src *.cpp *.c *.hpp *.h
