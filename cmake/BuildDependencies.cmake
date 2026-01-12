@@ -32,6 +32,9 @@ ExternalProject_Add(ep_gmp
     BUILD_COMMAND make -j${NPROC}
     INSTALL_COMMAND make install
     BUILD_IN_SOURCE FALSE
+    BUILD_BYPRODUCTS 
+        ${DEPS_LIB_DIR}/libgmp.a
+        ${DEPS_LIB_DIR}/libgmpxx.a
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
     LOG_BUILD ON
@@ -55,52 +58,92 @@ ExternalProject_Add(ep_mpfr
     INSTALL_COMMAND make install
     BUILD_IN_SOURCE FALSE
     DEPENDS ep_gmp
+    BUILD_BYPRODUCTS ${DEPS_LIB_DIR}/libmpfr.a
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
     LOG_BUILD ON
 )
 
 # ============================================================================
-# FLINT (uses CMake, depends on GMP and MPFR)
+# FLINT (uses Autotools, depends on GMP and MPFR)
 # ============================================================================
 message(STATUS "Will build FLINT from source")
+
+# Download FLINT during configure time for better error messages
+set(FLINT_ARCHIVE "${CMAKE_BINARY_DIR}/downloads/flint-3.1.2.tar.gz")
+if(NOT EXISTS ${FLINT_ARCHIVE})
+    message(STATUS "Downloading FLINT 3.1.2...")
+    file(DOWNLOAD
+        https://github.com/flintlib/flint/releases/download/v3.1.2/flint-3.1.2.tar.gz
+        ${FLINT_ARCHIVE}
+        EXPECTED_HASH SHA256=fdb3a431a37464834acff3bdc145f4fe8d0f951dd5327c4c6f93f4cbac5c2700
+        SHOW_PROGRESS
+        STATUS DOWNLOAD_STATUS
+    )
+    list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+    list(GET DOWNLOAD_STATUS 1 ERROR_MESSAGE)
+    if(NOT STATUS_CODE EQUAL 0)
+        message(FATAL_ERROR "Failed to download FLINT: ${ERROR_MESSAGE}")
+    endif()
+    message(STATUS "FLINT download complete")
+endif()
+
 ExternalProject_Add(ep_flint
-    GIT_REPOSITORY https://github.com/flintlib/flint.git
-    GIT_TAG v3.1.2
-    GIT_SHALLOW TRUE
-    DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/downloads
-    CMAKE_ARGS
-        -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR}
-        -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_DIR}
-        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-        -DCMAKE_BUILD_TYPE=Release
-        -DBUILD_SHARED_LIBS=OFF
-        -DBUILD_TESTING=OFF
-        -DBUILD_DOCS=OFF
-    BUILD_COMMAND ${CMAKE_COMMAND} --build . --parallel ${NPROC}
-    INSTALL_COMMAND ${CMAKE_COMMAND} --install .
+    URL ${FLINT_ARCHIVE}
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    CONFIGURE_COMMAND <SOURCE_DIR>/configure
+        --prefix=${DEPS_INSTALL_DIR}
+        --with-gmp=${DEPS_INSTALL_DIR}
+        --with-mpfr=${DEPS_INSTALL_DIR}
+        --disable-shared
+        --enable-static
+        --with-pic
+        CFLAGS=-fPIC
+        CXXFLAGS=-fPIC
+    BUILD_COMMAND make -j${NPROC}
+    INSTALL_COMMAND make install
+    BUILD_IN_SOURCE TRUE
     DEPENDS ep_mpfr
-    LOG_DOWNLOAD ON
+    BUILD_BYPRODUCTS ${DEPS_LIB_DIR}/libflint.a
     LOG_CONFIGURE ON
     LOG_BUILD ON
+    LOG_INSTALL ON
 )
 
-# Create an interface target that depends on the external projects
+# Create imported targets with proper DEPENDS
+add_library(gmp_imported STATIC IMPORTED GLOBAL)
+set_target_properties(gmp_imported PROPERTIES
+    IMPORTED_LOCATION ${DEPS_LIB_DIR}/libgmp.a
+)
+add_dependencies(gmp_imported ep_gmp)
+
+add_library(gmpxx_imported STATIC IMPORTED GLOBAL)
+set_target_properties(gmpxx_imported PROPERTIES
+    IMPORTED_LOCATION ${DEPS_LIB_DIR}/libgmpxx.a
+)
+add_dependencies(gmpxx_imported ep_gmp)
+
+add_library(mpfr_imported STATIC IMPORTED GLOBAL)
+set_target_properties(mpfr_imported PROPERTIES
+    IMPORTED_LOCATION ${DEPS_LIB_DIR}/libmpfr.a
+)
+add_dependencies(mpfr_imported ep_mpfr)
+
+add_library(flint_imported STATIC IMPORTED GLOBAL)
+set_target_properties(flint_imported PROPERTIES
+    IMPORTED_LOCATION ${DEPS_LIB_DIR}/libflint.a
+)
+add_dependencies(flint_imported ep_flint)
+
+# Create an interface target that bundles everything
 add_library(flint_external INTERFACE)
-add_dependencies(flint_external ep_flint)
-
-target_include_directories(flint_external INTERFACE
-    ${DEPS_INCLUDE_DIR}
-)
-
-# Link order matters: flint needs mpfr, mpfr needs gmp
+target_include_directories(flint_external INTERFACE ${DEPS_INCLUDE_DIR})
 target_link_libraries(flint_external INTERFACE
-    ${DEPS_LIB_DIR}/libflint.a
-    ${DEPS_LIB_DIR}/libmpfr.a
-    ${DEPS_LIB_DIR}/libgmp.a
-    ${DEPS_LIB_DIR}/libgmpxx.a  # Add C++ bindings if available
+    flint_imported
+    mpfr_imported
+    gmpxx_imported
+    gmp_imported
 )
 
-# Export for parent scope
-set(FLINT_TARGET flint_external PARENT_SCOPE)
-set(FLINT_INCLUDE_DIRS ${DEPS_INCLUDE_DIR} PARENT_SCOPE)
+set(FLINT_TARGET flint_external)
+set(FLINT_INCLUDE_DIRS ${DEPS_INCLUDE_DIR})
