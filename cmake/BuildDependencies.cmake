@@ -21,6 +21,7 @@ message(STATUS "Will build GMP from source")
 ExternalProject_Add(ep_gmp
     URL https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz
     URL_HASH SHA256=a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/downloads
     CONFIGURE_COMMAND <SOURCE_DIR>/configure
         --prefix=${DEPS_INSTALL_DIR}
@@ -41,7 +42,7 @@ ExternalProject_Add(ep_gmp
 # ============================================================================
 message(STATUS "Will build MPFR from source")
 ExternalProject_Add(ep_mpfr
-    URL https://www.mpfr.org/mpfr-current/mpfr-4.2.1.tar.xz
+    URL https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
     URL_HASH SHA256=277807353a6726978996945af13e52829e3abd7a9a5b7fb2793894e18f1fcbb2
     DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/downloads
     CONFIGURE_COMMAND <SOURCE_DIR>/configure
@@ -97,6 +98,7 @@ target_link_libraries(flint_external INTERFACE
     ${DEPS_LIB_DIR}/libflint.a
     ${DEPS_LIB_DIR}/libmpfr.a
     ${DEPS_LIB_DIR}/libgmp.a
+    ${DEPS_LIB_DIR}/libgmpxx.a  # Add C++ bindings if available
 )
 
 # Export for parent scope

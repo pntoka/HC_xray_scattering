@@ -46,7 +46,7 @@ if(FETCH_BOOST)
     
     FetchContent_Declare(
         Boost
-        URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0-cmake.tar.xz
+        URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         EXCLUDE_FROM_ALL
     )
@@ -83,9 +83,9 @@ endif()
 # Sources
 # ============================================================================
 set(SOURCES
-    src/bindings.cpp
-    # Add other source files here:
-    # src/other_file.cpp
+    src/calculations.cpp
+    src/iobs_calculator.cpp
+    src/python_bindings.cpp
 )
 
 # ============================================================================
@@ -93,15 +93,49 @@ set(SOURCES
 # ============================================================================
 pybind11_add_module(iobs_ngc ${SOURCES})
 
+# Add explicit dependency on FLINT build
+if(NOT USE_SYSTEM_LIBS)
+    add_dependencies(iobs_ngc ep_flint)
+endif()
+
 # Include directories
 target_include_directories(iobs_ngc PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
+# Add FLINT include directory when building from source
+if(NOT USE_SYSTEM_LIBS)
+    target_include_directories(iobs_ngc PRIVATE
+        ${CMAKE_BINARY_DIR}/deps/include
+    )
+endif()
+
 # Link libraries
 target_link_libraries(iobs_ngc PRIVATE
     ${FLINT_TARGET}
     ${BOOST_TARGET}
+)
+
+# Force complete static linking on macOS
+if(APPLE)
+    target_link_options(iobs_ngc PRIVATE
+        -Wl,-force_load,${DEPS_LIB_DIR}/libflint.a
+        -Wl,-force_load,${DEPS_LIB_DIR}/libmpfr.a
+        -Wl,-force_load,${DEPS_LIB_DIR}/libgmp.a
+    )
+elseif(UNIX)
+    target_link_options(iobs_ngc PRIVATE
+        -Wl,--whole-archive
+        ${DEPS_LIB_DIR}/libflint.a
+        ${DEPS_LIB_DIR}/libmpfr.a
+        ${DEPS_LIB_DIR}/libgmp.a
+        -Wl,--no-whole-archive
+    )
+endif()
+
+# Add math defines
+target_compile_definitions(iobs_ngc PRIVATE
+    _USE_MATH_DEFINES
 )
 
 # ============================================================================
