@@ -9,7 +9,7 @@ build-backend = "scikit_build_core.build"
 name = "iobs_ngc"
 version = "0.1.2"
 description = "Python bindings for iobs_ngc"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = []
 readme = "README.md"
 
@@ -21,3 +21,27 @@ cmake.build-type = "Release"
 [tool.scikit-build.cmake.define]
 USE_SYSTEM_LIBS = "OFF"
 FETCH_BOOST = "ON"
+
+[tool.cibuildwheel]
+# Build for Python 3.9-3.12
+build = "cp39-* cp310-* cp311-* cp312-*"
+
+# Skip 32-bit builds, musllinux, and Windows (for now)
+skip = "*-win* *-win32 *-manylinux_i686 *-musllinux_*"
+
+# Test the wheel after building
+test-command = "python -c 'import iobs_ngc; print(iobs_ngc.__name__)'"
+
+# Platform-specific settings
+[tool.cibuildwheel.linux]
+before-all = "if command -v yum >/dev/null 2>&1; then yum install -y wget tar xz; else apt-get update && apt-get install -y wget; fi"
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
+
+# Use proper CMake variables for Python discovery
+[tool.cibuildwheel.linux.config-settings]
+"cmake.define.Python3_ROOT_DIR" = "/opt/python/cp{py_version_nodot}-cp{py_version_nodot}"
+"cmake.define.Python3_FIND_STRATEGY" = "LOCATION"
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"

@@ -28,9 +28,17 @@ endif()
 # ============================================================================
 # Python and pybind11
 # ============================================================================
-find_package(Python COMPONENTS Interpreter Development REQUIRED)
+# Help CMake find Python in manylinux environments
+if(DEFINED Python3_ROOT_DIR AND NOT Python3_INCLUDE_DIRS)
+    set(Python3_FIND_STRATEGY LOCATION)
+    set(Python3_FIND_REGISTRY NEVER)
+endif()
+
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
 message(STATUS "Found pybind11: ${pybind11_VERSION}")
+message(STATUS "Python3 executable: ${Python3_EXECUTABLE}")
+message(STATUS "Python3 include dirs: ${Python3_INCLUDE_DIRS}")
 
 # ============================================================================
 # Boost
