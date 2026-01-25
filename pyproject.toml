@@ -16,6 +16,7 @@ readme = "README.md"
 [tool.scikit-build]
 cmake.minimum-version = "3.15"
 cmake.build-type = "Release"
+# cmake.args = ["-G", "Ninja"]
 
 # Default: build dependencies from source
 [tool.scikit-build.cmake.define]
@@ -26,11 +27,11 @@ FETCH_BOOST = "ON"
 # Build for Python 3.9-3.12
 build = "cp39-* cp310-* cp311-* cp312-*"
 
-# Skip 32-bit builds, musllinux, and Windows (for now)
-skip = "*-win* *-win32 *-manylinux_i686 *-musllinux_*"
+# Skip 32-bit builds and musllinux
+skip = "*-win32 *-manylinux_i686 *-musllinux_*"
 
 # Test the wheel after building
-test-command = "python -c 'import iobs_ngc; print(iobs_ngc.__name__)'"
+test-command = "python -c \"import iobs_ngc\""
 
 # Platform-specific settings
 [tool.cibuildwheel.linux]
@@ -41,7 +42,30 @@ repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 [tool.cibuildwheel.linux.config-settings]
 "cmake.define.Python3_ROOT_DIR" = "/opt/python/cp{py_version_nodot}-cp{py_version_nodot}"
 "cmake.define.Python3_FIND_STRATEGY" = "LOCATION"
+"cmake.args" = "-G Ninja"
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
+
+[tool.cibuildwheel.macos.config-settings]
+"cmake.args" = "-G Ninja"
+
+[tool.cibuildwheel.windows]
+before-build = [
+    "pip install delvewheel",
+]
+repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.windows.environment]
+VCPKG_ROOT = "C:\\vcpkg"
+CMAKE_TOOLCHAIN_FILE = "C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+VCPKG_TARGET_TRIPLET = "x64-windows-static"
+PKG_CONFIG_PATH = "C:\\vcpkg\\installed\\x64-windows-static\\lib\\pkgconfig"
+
+[tool.cibuildwheel.windows.config-settings]
+"cmake.define.CMAKE_TOOLCHAIN_FILE" = "C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+"cmake.define.VCPKG_TARGET_TRIPLET" = "x64-windows-static"
+"cmake.define.USE_SYSTEM_LIBS" = "OFF"
+# Force x64 architecture
+"cmake.define.CMAKE_GENERATOR_PLATFORM" = "x64"

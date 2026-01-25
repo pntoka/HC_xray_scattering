@@ -6,6 +6,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Debug: Print architecture information
+message(STATUS "CMake Generator: ${CMAKE_GENERATOR}")
+message(STATUS "CMake Generator Platform: ${CMAKE_GENERATOR_PLATFORM}")
+message(STATUS "Pointer size: ${CMAKE_SIZEOF_VOID_P} bytes")
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(STATUS "Building for 64-bit (x64)")
+else()
+    message(STATUS "Building for 32-bit (Win32)")
+endif()
+
 # ============================================================================
 # Options
 # ============================================================================
@@ -74,17 +84,36 @@ endif()
 # ============================================================================
 if(USE_SYSTEM_LIBS)
     message(STATUS "Using system-installed FLINT")
-    find_package(FLINT REQUIRED)
     
-    # Create interface target for consistency
-    add_library(flint_external INTERFACE)
-    target_include_directories(flint_external INTERFACE ${FLINT_INCLUDE_DIRS})
-    target_link_libraries(flint_external INTERFACE ${FLINT_LIBRARIES})
-    set(FLINT_TARGET flint_external)
+    if(WIN32 AND DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
+        message(STATUS "Using vcpkg for Windows dependencies")
+        
+        find_package(PkgConfig REQUIRED)
+        
+        pkg_check_modules(gmp REQUIRED IMPORTED_TARGET gmp)
+        pkg_check_modules(gmpxx REQUIRED IMPORTED_TARGET gmpxx)
+        pkg_check_modules(mpfr REQUIRED IMPORTED_TARGET mpfr)
+        pkg_check_modules(flint REQUIRED IMPORTED_TARGET flint)
+        
+        add_library(flint_external INTERFACE)
+        target_link_libraries(flint_external INTERFACE 
+            PkgConfig::flint
+            PkgConfig::mpfr
+            PkgConfig::gmpxx
+            PkgConfig::gmp
+        )
+        set(FLINT_TARGET flint_external)
+    else()
+        find_package(FLINT REQUIRED)
+        
+        add_library(flint_external INTERFACE)
+        target_include_directories(flint_external INTERFACE ${FLINT_INCLUDE_DIRS})
+        target_link_libraries(flint_external INTERFACE ${FLINT_LIBRARIES})
+        set(FLINT_TARGET flint_external)
+    endif()
 else()
-    message(STATUS "Building FLINT and dependencies from source")
+    message(STATUS "Building FLINT from source (GMP/MPFR from vcpkg on Windows)")
     include(BuildDependencies)
-    # FLINT_TARGET is set by BuildDependencies.cmake
 endif()
 
 # ============================================================================
@@ -124,14 +153,17 @@ target_link_libraries(iobs_ngc PRIVATE
     ${BOOST_TARGET}
 )
 
-# Force complete static linking on macOS
-if(APPLE)
+# Platform-specific linking
+if(WIN32)
+    # Windows: link statically
+    target_link_libraries(iobs_ngc PRIVATE ${FLINT_TARGET})
+elseif(APPLE)
     target_link_options(iobs_ngc PRIVATE
         -Wl,-force_load,${DEPS_LIB_DIR}/libflint.a
         -Wl,-force_load,${DEPS_LIB_DIR}/libmpfr.a
         -Wl,-force_load,${DEPS_LIB_DIR}/libgmp.a
     )
-elseif(UNIX)
+elseif(UNIX AND NOT APPLE)
     target_link_options(iobs_ngc PRIVATE
         -Wl,--whole-archive
         ${DEPS_LIB_DIR}/libflint.a
@@ -145,6 +177,15 @@ endif()
 target_compile_definitions(iobs_ngc PRIVATE
     _USE_MATH_DEFINES
 )
+
+# Platform-specific definitions
+if(WIN32)
+    target_compile_definitions(iobs_ngc PRIVATE USING_ARB)
+    message(STATUS "Windows: Using ARB library")
+else()
+    target_compile_definitions(iobs_ngc PRIVATE USING_FLINT)
+    message(STATUS "Unix: Using FLINT 3+ library")
+endif()
 
 # ============================================================================
 # Compiler warnings
