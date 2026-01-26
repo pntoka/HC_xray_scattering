@@ -27,16 +27,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vcpkg-
 
-      # Windows: Install vcpkg dependencies (cibuildwheel will use these)
+      # Windows: Ensure vcpkg directory exists and install dependencies
       - name: Install vcpkg dependencies (Windows only)
         if: runner.os == 'Windows'
         timeout-minutes: 90
-        shell: cmd
+        shell: powershell
         run: |
-          if not exist C:\vcpkg git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          if (-not (Test-Path C:\vcpkg)) {
+            git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+          }
           cd C:\vcpkg
-          if not exist vcpkg.exe call bootstrap-vcpkg.bat
-          vcpkg install gmp:x64-windows-static mpfr:x64-windows-static flint:x64-windows-static arb:x64-windows-static pthreads:x64-windows-static pkgconf:x64-windows-static
+          if (-not (Test-Path .\vcpkg.exe)) {
+            .\bootstrap-vcpkg.bat
+          }
+          .\vcpkg install gmp:x64-windows-static mpfr:x64-windows-static flint:x64-windows-static arb:x64-windows-static pthreads:x64-windows-static pkgconf:x64-windows-static
 
       # Linux: Install ninja (for faster builds)
       - name: Install Ninja (Linux)
