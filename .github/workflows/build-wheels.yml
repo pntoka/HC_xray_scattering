@@ -17,6 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Windows: Install vcpkg dependencies (cibuildwheel will use these)
       - name: Install vcpkg dependencies (Windows only)
         if: runner.os == 'Windows'
         shell: cmd
@@ -25,15 +26,18 @@ jobs:
           cd C:\vcpkg
           call bootstrap-vcpkg.bat
           vcpkg install gmp:x64-windows-static mpfr:x64-windows-static flint:x64-windows-static arb:x64-windows-static pthreads:x64-windows-static pkgconf:x64-windows-static
-          
-      - name: Set Windows environment variables
-        if: runner.os == 'Windows'
-        shell: bash
+
+      # Linux: Install ninja (for faster builds)
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
         run: |
-          echo "VCPKG_ROOT=C:\\vcpkg" >> $GITHUB_ENV
-          echo "CMAKE_TOOLCHAIN_FILE=C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=C:\\vcpkg\\installed\\x64-windows-static\\lib\\pkgconfig" >> $GITHUB_ENV
-          echo "VCPKG_TARGET_TRIPLET=x64-windows-static" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+
+      # macOS: Install ninja
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.16.5
@@ -42,7 +46,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
 
   build_sdist:
