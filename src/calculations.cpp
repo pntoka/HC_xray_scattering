@@ -2,9 +2,23 @@
 #include <iostream>
 #include <array>
 #include <stdexcept>
-#include <flint/flint.h>
-#include <flint/acb.h>
-#include <flint/acb_hypgeom.h>
+
+// #include <flint/flint.h>
+// #include <flint/acb.h>
+// #include <flint/acb_hypgeom.h>
+// Platform-specific includes
+#ifdef _WIN32
+    // Windows: use ARB
+    #include <arb.h>
+    #include <acb.h>
+    #include <acb_hypgeom.h>
+#else
+    // macOS/Linux: use FLINT 3+
+    #include <flint/flint.h>
+    #include <flint/acb.h>
+    #include <flint/acb_hypgeom.h>
+#endif
+
 #include <complex>
 typedef std::complex<double> fcomplex;
 #include "calculations.h"
