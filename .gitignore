@@ -4,3 +4,4 @@ example/*.png
 /bld
 /wheelhouse
 /.vs
+/.vscode
