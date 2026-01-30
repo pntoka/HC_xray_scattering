@@ -34,9 +34,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\vcpkg\installed
-          key: ${{ runner.os }}-vcpkg-installed-${{ hashFiles('vcpkg.json', '.github/workflows/build-wheels.yml') }}
+          key: ${{ runner.os }}-vcpkg-x64-windows-${{ hashFiles('vcpkg.json', '.github/workflows/build-wheels.yml') }}
           restore-keys: |
-            ${{ runner.os }}-vcpkg-installed-
+            ${{ runner.os }}-vcpkg-x64-windows-
 
       # Windows: Cache vcpkg downloads
       - name: Cache vcpkg downloads (Windows)
@@ -48,20 +48,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vcpkg-downloads
 
+      # Windows: Cache MSYS2 tools (prevents re-downloading packages)
+      - name: Cache vcpkg MSYS2 tools (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\downloads\tools\msys2
+          key: ${{ runner.os }}-vcpkg-msys2-tools
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-msys2-tools
+
       # Windows: Cache vcpkg binary cache
       - name: Cache vcpkg binary cache (Windows)
         if: runner.os == 'Windows'
         uses: actions/cache@v4
         with:
           path: C:\vcpkg\binarycache
-          key: ${{ runner.os }}-vcpkg-binarycache-${{ hashFiles('vcpkg.json', '.github/workflows/build-wheels.yml') }}
+          key: ${{ runner.os }}-vcpkg-binarycache-x64-windows-${{ hashFiles('vcpkg.json', '.github/workflows/build-wheels.yml') }}
           restore-keys: |
-            ${{ runner.os }}-vcpkg-binarycache-
+            ${{ runner.os }}-vcpkg-binarycache-x64-windows-
 
       # Windows: Install vcpkg dependencies
       - name: Install vcpkg dependencies (Windows)
         if: runner.os == 'Windows'
-        timeout-minutes: 150
+        timeout-minutes: 90
         shell: pwsh
         run: |
           if (-not (Test-Path C:\vcpkg)) {
@@ -72,8 +82,12 @@ jobs:
             .\bootstrap-vcpkg.bat
           }
           
-          # Install all dependencies in one command for better dependency resolution
-          .\vcpkg.exe install gmp:x64-windows-static mpfr:x64-windows-static flint:x64-windows-static arb:x64-windows-static pthreads:x64-windows-static pkgconf:x64-windows-static --clean-after-build
+          # Install all dependencies with dynamic triplet (much faster than static)
+          .\vcpkg.exe install gmp:x64-windows mpfr:x64-windows flint:x64-windows arb:x64-windows pthreads:x64-windows pkgconf:x64-windows --clean-after-build
+          
+          # Add pkgconf to PATH for subsequent steps
+          echo "C:\vcpkg\installed\x64-windows\tools\pkgconf" | Out-File -FilePath $env:GITHUB_PATH -Append
+          echo "C:\vcpkg\installed\x64-windows\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       # Linux: Install ninja (for faster builds)
       - name: Install Ninja (Linux)

@@ -54,17 +54,17 @@ repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest
 before-build = [
     "pip install delvewheel",
 ]
-repair-wheel-command = "delvewheel repair -w {dest_dir} {wheel}"
+repair-wheel-command = "delvewheel repair --add-path C:\\vcpkg\\installed\\x64-windows\\bin -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.windows.environment]
 VCPKG_ROOT = "C:\\vcpkg"
 CMAKE_TOOLCHAIN_FILE = "C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
-VCPKG_TARGET_TRIPLET = "x64-windows-static"
-PKG_CONFIG_PATH = "C:\\vcpkg\\installed\\x64-windows-static\\lib\\pkgconfig"
+VCPKG_TARGET_TRIPLET = "x64-windows"
+PKG_CONFIG_PATH = "C:\\vcpkg\\installed\\x64-windows\\lib\\pkgconfig"
 
 [tool.cibuildwheel.windows.config-settings]
 "cmake.define.CMAKE_TOOLCHAIN_FILE" = "C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
-"cmake.define.VCPKG_TARGET_TRIPLET" = "x64-windows-static"
+"cmake.define.VCPKG_TARGET_TRIPLET" = "x64-windows"
 "cmake.define.USE_SYSTEM_LIBS" = "OFF"
 # Force x64 architecture
 "cmake.define.CMAKE_GENERATOR_PLATFORM" = "x64"

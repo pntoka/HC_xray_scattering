@@ -63,28 +63,50 @@ if(WIN32)
         REQUIRED
     )
     
+    # Find DLLs for wheel repair
+    find_file(ARB_DLL
+        NAMES arb.dll
+        PATHS 
+            C:/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/bin
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin
+        NO_DEFAULT_PATH
+    )
+    find_file(FLINT_DLL
+        NAMES flint.dll
+        PATHS 
+            C:/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/bin
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin
+        NO_DEFAULT_PATH
+    )
+    
     message(STATUS "Found ARB library: ${ARB_LIBRARY}")
     message(STATUS "Found ARB include: ${ARB_INCLUDE_DIR}")
     message(STATUS "Found FLINT library: ${FLINT_LIBRARY}")
     message(STATUS "Found pthread library: ${PTHREAD_LIBRARY}")
+    if(ARB_DLL)
+        message(STATUS "Found ARB DLL: ${ARB_DLL}")
+    endif()
+    if(FLINT_DLL)
+        message(STATUS "Found FLINT DLL: ${FLINT_DLL}")
+    endif()
     
-    # Create imported target for pthread
-    add_library(pthread_imported STATIC IMPORTED)
+    # Create imported target for pthread (could be static or dynamic)
+    add_library(pthread_imported SHARED IMPORTED)
     set_target_properties(pthread_imported PROPERTIES
-        IMPORTED_LOCATION "${PTHREAD_LIBRARY}"
+        IMPORTED_IMPLIB "${PTHREAD_LIBRARY}"
     )
     
     # Create imported target for arb
-    add_library(arb_imported STATIC IMPORTED)
+    add_library(arb_imported SHARED IMPORTED)
     set_target_properties(arb_imported PROPERTIES
-        IMPORTED_LOCATION "${ARB_LIBRARY}"
+        IMPORTED_IMPLIB "${ARB_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${ARB_INCLUDE_DIR}"
     )
     
     # Create imported target for flint
-    add_library(flint_imported STATIC IMPORTED)
+    add_library(flint_imported SHARED IMPORTED)
     set_target_properties(flint_imported PROPERTIES
-        IMPORTED_LOCATION "${FLINT_LIBRARY}"
+        IMPORTED_IMPLIB "${FLINT_LIBRARY}"
     )
     
     # Bundle everything together
