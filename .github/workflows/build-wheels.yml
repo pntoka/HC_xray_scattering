@@ -96,6 +96,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build
 
+      # Linux: Install system dependencies (Linux)
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Install FLINT and dependencies via package manager in before-all
+          echo "Will be handled in cibuildwheel before-all"
+
       # macOS: Install ninja
       - name: Install Ninja (macOS)
         if: runner.os == 'macOS'
