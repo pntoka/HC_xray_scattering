@@ -17,6 +17,73 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Linux: Cache FLINT dependencies build
+      - name: Cache FLINT dependencies (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: |
+            /opt/flint-deps
+          key: ${{ runner.os }}-flint-deps-v1-${{ hashFiles('cmake/BuildDependencies.cmake') }}
+          restore-keys: |
+            ${{ runner.os }}-flint-deps-v1-
+
+      # Linux: Build FLINT and dependencies from source
+      - name: Build FLINT dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Create installation directory
+          sudo mkdir -p /opt/flint-deps
+          sudo chown $(whoami):$(whoami) /opt/flint-deps
+          
+          # Set number of parallel jobs
+          NPROC=$(nproc)
+          echo "Building with $NPROC parallel jobs"
+          
+          # Check if already built (cache hit)
+          if [ -f /opt/flint-deps/lib/libflint.a ]; then
+            echo "FLINT dependencies found in cache, skipping build"
+          else
+            echo "Building FLINT dependencies from source..."
+            
+            # Install build tools
+            sudo apt-get update
+            sudo apt-get install -y build-essential wget ninja-build autoconf automake libtool m4
+            
+            # Build GMP
+            cd /tmp
+            wget -q https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz
+            tar -xf gmp-6.3.0.tar.xz
+            cd gmp-6.3.0
+            ./configure --prefix=/opt/flint-deps --enable-cxx --with-pic --disable-shared --enable-static
+            make -j$NPROC
+            make install
+            
+            # Build MPFR
+            cd /tmp
+            wget -q https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
+            tar -xf mpfr-4.2.1.tar.xz
+            cd mpfr-4.2.1
+            ./configure --prefix=/opt/flint-deps --with-gmp=/opt/flint-deps --with-pic --disable-shared --enable-static
+            make -j$NPROC
+            make install
+            
+            # Build FLINT
+            cd /tmp
+            wget -q https://github.com/flintlib/flint/releases/download/v3.1.2/flint-3.1.2.tar.gz
+            tar -xf flint-3.1.2.tar.gz
+            cd flint-3.1.2
+            ./configure --prefix=/opt/flint-deps --with-gmp=/opt/flint-deps --with-mpfr=/opt/flint-deps --disable-shared --enable-static --with-pic CFLAGS=-fPIC CXXFLAGS=-fPIC
+            make -j$NPROC
+            make install
+            
+            echo "FLINT dependencies build complete"
+          fi
+          
+          # Verify installation
+          ls -la /opt/flint-deps/lib/
+          ls -la /opt/flint-deps/include/
+
       # Windows: Set up vcpkg environment variables
       - name: Set up vcpkg env (Windows)
         if: runner.os == 'Windows'
@@ -95,13 +162,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build
-
-      # Linux: Install system dependencies (Linux)
-      - name: Install system dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          # Install FLINT and dependencies via package manager in before-all
-          echo "Will be handled in cibuildwheel before-all"
 
       # macOS: Install ninja
       - name: Install Ninja (macOS)

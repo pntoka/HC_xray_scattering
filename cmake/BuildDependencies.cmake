@@ -204,6 +204,53 @@ if(NOT EXISTS ${FLINT_ARCHIVE})
     message(STATUS "FLINT download complete")
 endif()
 
+# Check if we should use pre-built dependencies from CI
+if(DEFINED ENV{CI} AND EXISTS "/opt/flint-deps/lib/libflint.a")
+    message(STATUS "Using pre-built FLINT dependencies from CI")
+    
+    set(DEPS_INSTALL_DIR "/opt/flint-deps")
+    set(DEPS_INCLUDE_DIR "${DEPS_INSTALL_DIR}/include")
+    set(DEPS_LIB_DIR "${DEPS_INSTALL_DIR}/lib")
+    
+    # Create imported targets for pre-built libraries
+    add_library(gmp_imported STATIC IMPORTED GLOBAL)
+    set_target_properties(gmp_imported PROPERTIES
+        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libgmp.a
+    )
+
+    add_library(gmpxx_imported STATIC IMPORTED GLOBAL)
+    set_target_properties(gmpxx_imported PROPERTIES
+        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libgmpxx.a
+    )
+
+    add_library(mpfr_imported STATIC IMPORTED GLOBAL)
+    set_target_properties(mpfr_imported PROPERTIES
+        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libmpfr.a
+    )
+
+    add_library(flint_imported STATIC IMPORTED GLOBAL)
+    set_target_properties(flint_imported PROPERTIES
+        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libflint.a
+    )
+
+    # Create an interface target that bundles everything
+    add_library(flint_external INTERFACE)
+    target_include_directories(flint_external INTERFACE ${DEPS_INCLUDE_DIR})
+    target_link_libraries(flint_external INTERFACE
+        flint_imported
+        mpfr_imported
+        gmpxx_imported
+        gmp_imported
+    )
+
+    # Create dummy ep_flint target for compatibility
+    add_custom_target(ep_flint)
+
+    set(FLINT_TARGET flint_external)
+    set(FLINT_INCLUDE_DIRS ${DEPS_INCLUDE_DIR})
+    return()
+endif()
+
 ExternalProject_Add(ep_flint
     URL ${FLINT_ARCHIVE}
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE

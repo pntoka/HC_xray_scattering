@@ -34,14 +34,17 @@ skip = "*-win32 *-manylinux_i686 *-musllinux_*"
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
-before-all = "yum install -y flint-devel gmp-devel mpfr-devel || apt-get update && apt-get install -y libflint-dev libgmp-dev libmpfr-dev"
+before-all = [
+    "if command -v yum >/dev/null 2>&1; then yum install -y wget tar xz ninja-build; else apt-get update && apt-get install -y wget ninja-build; fi",
+]
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 
 # Use proper CMake variables for Python discovery
 [tool.cibuildwheel.linux.config-settings]
-"cmake.define.USE_SYSTEM_LIBS" = "ON"
 "cmake.define.Python3_ROOT_DIR" = "/opt/python/cp{py_version_nodot}-cp{py_version_nodot}"
 "cmake.define.Python3_FIND_STRATEGY" = "LOCATION"
+"cmake.define.USE_SYSTEM_LIBS" = "ON"
+"cmake.define.CMAKE_PREFIX_PATH" = "/opt/flint-deps"
 "cmake.args" = "-G Ninja"
 
 [tool.cibuildwheel.macos]
