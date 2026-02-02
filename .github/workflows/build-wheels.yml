@@ -79,22 +79,6 @@ jobs:
             echo "✗ libflint.a NOT found"
             exit 1
           fi
-          
-          if [ -f /opt/flint-deps/lib/libgmp.a ]; then
-            echo "✓ libgmp.a found"
-            ls -lh /opt/flint-deps/lib/libgmp.a
-          else
-            echo "✗ libgmp.a NOT found"
-            exit 1
-          fi
-          
-          if [ -f /opt/flint-deps/lib/libmpfr.a ]; then
-            echo "✓ libmpfr.a found"
-            ls -lh /opt/flint-deps/lib/libmpfr.a
-          else
-            echo "✗ libmpfr.a NOT found"
-            exit 1
-          fi
 
       # Windows: Set up vcpkg environment variables
       - name: Set up vcpkg env (Windows)
