@@ -157,7 +157,7 @@ if(DEFINED ENV{CI} AND EXISTS "/opt/flint-deps/lib/libflint.a")
     )
 
     set(FLINT_TARGET flint_external)
-    set(USE_SYSTEM_LIBS OFF)  # Override since we're using our custom setup
+    set(USE_SYSTEM_LIBS_INTERNAL ON)  # Mark that we handled this
 elseif(USE_SYSTEM_LIBS)
     message(STATUS "Using system-installed FLINT")
     
