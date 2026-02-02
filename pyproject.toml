@@ -19,8 +19,8 @@ cmake.build-type = "Release"
 
 # Default: build dependencies from source
 [tool.scikit-build.cmake.define]
-USE_SYSTEM_LIBS = "OFF"
-FETCH_BOOST = "ON"
+USE_SYSTEM_LIBS = "ON"
+FETCH_BOOST = "OFF"
 
 [tool.cibuildwheel]
 # Build for Python 3.9-3.12
@@ -50,9 +50,18 @@ repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
+before-all = [
+    "brew install gmp mpfr flint boost ninja",
+]
 repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"
 
+# Set deployment target to oldest supported macOS
+environment = { MACOSX_DEPLOYMENT_TARGET = "14.0" }
+
 [tool.cibuildwheel.macos.config-settings]
+"cmake.define.USE_SYSTEM_LIBS" = "ON"
+"cmake.define.FETCH_BOOST" = "OFF"
+"cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "14.0"
 "cmake.args" = "-G Ninja"
 
 [tool.cibuildwheel.windows]

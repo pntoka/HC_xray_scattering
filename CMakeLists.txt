@@ -28,10 +28,24 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 # ============================================================================
 # Conda environment support (only when using system libs)
 # ============================================================================
-if(USE_SYSTEM_LIBS)
+if(USE_SYSTEM_LIBS OR NOT FETCH_BOOST)
     if(DEFINED ENV{CONDA_PREFIX})
         list(PREPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
         message(STATUS "Added CONDA_PREFIX to CMAKE_PREFIX_PATH: $ENV{CONDA_PREFIX}")
+    endif()
+    
+    # Add Homebrew paths for macOS
+    if(APPLE)
+        execute_process(
+            COMMAND brew --prefix
+            OUTPUT_VARIABLE HOMEBREW_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(HOMEBREW_PREFIX)
+            list(PREPEND CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}")
+            message(STATUS "Added Homebrew prefix to CMAKE_PREFIX_PATH: ${HOMEBREW_PREFIX}")
+        endif()
     endif()
 endif()
 
@@ -176,19 +190,25 @@ if(WIN32)
     # Windows: link statically
     target_link_libraries(iobs_ngc PRIVATE ${FLINT_TARGET})
 elseif(APPLE)
-    target_link_options(iobs_ngc PRIVATE
-        -Wl,-force_load,${DEPS_LIB_DIR}/libflint.a
-        -Wl,-force_load,${DEPS_LIB_DIR}/libmpfr.a
-        -Wl,-force_load,${DEPS_LIB_DIR}/libgmp.a
-    )
+    # Only use force_load for static libraries built from source
+    if(NOT USE_SYSTEM_LIBS)
+        target_link_options(iobs_ngc PRIVATE
+            -Wl,-force_load,${DEPS_LIB_DIR}/libflint.a
+            -Wl,-force_load,${DEPS_LIB_DIR}/libmpfr.a
+            -Wl,-force_load,${DEPS_LIB_DIR}/libgmp.a
+        )
+    endif()
 elseif(UNIX AND NOT APPLE)
-    target_link_options(iobs_ngc PRIVATE
-        -Wl,--whole-archive
-        ${DEPS_LIB_DIR}/libflint.a
-        ${DEPS_LIB_DIR}/libmpfr.a
-        ${DEPS_LIB_DIR}/libgmp.a
-        -Wl,--no-whole-archive
-    )
+    # Only use whole-archive for static libraries built from source
+    if(NOT USE_SYSTEM_LIBS)
+        target_link_options(iobs_ngc PRIVATE
+            -Wl,--whole-archive
+            ${DEPS_LIB_DIR}/libflint.a
+            ${DEPS_LIB_DIR}/libmpfr.a
+            ${DEPS_LIB_DIR}/libgmp.a
+            -Wl,--no-whole-archive
+        )
+    endif()
 endif()
 
 # Add math defines

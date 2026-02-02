@@ -146,6 +146,66 @@ message(STATUS "Found system GMP include: ${GMP_INCLUDE_DIR}")
 message(STATUS "Found system MPFR: ${MPFR_LIBRARY}")
 message(STATUS "Found system MPFR include: ${MPFR_INCLUDE_DIR}")
 
+# Try to find system FLINT first (especially on macOS with Homebrew)
+if(USE_SYSTEM_LIBS)
+    find_library(FLINT_LIBRARY NAMES flint)
+    find_path(FLINT_INCLUDE_DIR NAMES flint/flint.h)
+    
+    if(FLINT_LIBRARY AND FLINT_INCLUDE_DIR)
+        message(STATUS "Found system FLINT library: ${FLINT_LIBRARY}")
+        message(STATUS "Found system FLINT include: ${FLINT_INCLUDE_DIR}")
+        
+        # Create imported targets for system libraries
+        add_library(gmp_imported SHARED IMPORTED GLOBAL)
+        set_target_properties(gmp_imported PROPERTIES
+            IMPORTED_LOCATION ${GMP_LIBRARY}
+            INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
+        )
+
+        add_library(gmpxx_imported SHARED IMPORTED GLOBAL)
+        set_target_properties(gmpxx_imported PROPERTIES
+            IMPORTED_LOCATION ${GMPXX_LIBRARY}
+            INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
+        )
+
+        add_library(mpfr_imported SHARED IMPORTED GLOBAL)
+        set_target_properties(mpfr_imported PROPERTIES
+            IMPORTED_LOCATION ${MPFR_LIBRARY}
+            INTERFACE_INCLUDE_DIRECTORIES ${MPFR_INCLUDE_DIR}
+        )
+        
+        # Create imported target for system FLINT
+        add_library(flint_imported SHARED IMPORTED GLOBAL)
+        set_target_properties(flint_imported PROPERTIES
+            IMPORTED_LOCATION ${FLINT_LIBRARY}
+            INTERFACE_INCLUDE_DIRECTORIES ${FLINT_INCLUDE_DIR}
+        )
+        
+        # Create an interface target that bundles everything
+        add_library(flint_external INTERFACE)
+        target_include_directories(flint_external INTERFACE 
+            ${FLINT_INCLUDE_DIR}
+            ${GMP_INCLUDE_DIR}
+            ${MPFR_INCLUDE_DIR}
+        )
+        target_link_libraries(flint_external INTERFACE
+            flint_imported
+            mpfr_imported
+            gmpxx_imported
+            gmp_imported
+        )
+        
+        # Create dummy target for compatibility
+        add_custom_target(ep_flint)
+        
+        set(FLINT_TARGET flint_external)
+        set(FLINT_INCLUDE_DIRS ${FLINT_INCLUDE_DIR})
+        return()
+    else()
+        message(STATUS "System FLINT not found, will build from source")
+    endif()
+endif()
+
 # ============================================================================
 # FLINT (uses Autotools, depends on system GMP and MPFR)
 # ============================================================================
@@ -188,46 +248,47 @@ ExternalProject_Add(ep_flint
     LOG_INSTALL OFF
 )
 
-# Create imported targets for system libraries
-add_library(gmp_imported SHARED IMPORTED GLOBAL)
-set_target_properties(gmp_imported PROPERTIES
-    IMPORTED_LOCATION ${GMP_LIBRARY}
-    INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
-)
+    # Create imported targets for system libraries
+    add_library(gmp_imported SHARED IMPORTED GLOBAL)
+    set_target_properties(gmp_imported PROPERTIES
+        IMPORTED_LOCATION ${GMP_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
+    )
 
-add_library(gmpxx_imported SHARED IMPORTED GLOBAL)
-set_target_properties(gmpxx_imported PROPERTIES
-    IMPORTED_LOCATION ${GMPXX_LIBRARY}
-    INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
-)
+    add_library(gmpxx_imported SHARED IMPORTED GLOBAL)
+    set_target_properties(gmpxx_imported PROPERTIES
+        IMPORTED_LOCATION ${GMPXX_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
+    )
 
-add_library(mpfr_imported SHARED IMPORTED GLOBAL)
-set_target_properties(mpfr_imported PROPERTIES
-    IMPORTED_LOCATION ${MPFR_LIBRARY}
-    INTERFACE_INCLUDE_DIRECTORIES ${MPFR_INCLUDE_DIR}
-)
+    add_library(mpfr_imported SHARED IMPORTED GLOBAL)
+    set_target_properties(mpfr_imported PROPERTIES
+        IMPORTED_LOCATION ${MPFR_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${MPFR_INCLUDE_DIR}
+    )
 
-# Create imported target for FLINT
-add_library(flint_imported STATIC IMPORTED GLOBAL)
-set_target_properties(flint_imported PROPERTIES
-    IMPORTED_LOCATION ${DEPS_LIB_DIR}/libflint.a
-    INTERFACE_INCLUDE_DIRECTORIES ${DEPS_INCLUDE_DIR}
-)
-add_dependencies(flint_imported ep_flint)
+    # Create imported target for FLINT
+    add_library(flint_imported STATIC IMPORTED GLOBAL)
+    set_target_properties(flint_imported PROPERTIES
+        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libflint.a
+        INTERFACE_INCLUDE_DIRECTORIES ${DEPS_INCLUDE_DIR}
+    )
+    add_dependencies(flint_imported ep_flint)
 
-# Create an interface target that bundles everything
-add_library(flint_external INTERFACE)
-target_include_directories(flint_external INTERFACE 
-    ${DEPS_INCLUDE_DIR}
-    ${GMP_INCLUDE_DIR}
-    ${MPFR_INCLUDE_DIR}
-)
-target_link_libraries(flint_external INTERFACE
-    flint_imported
-    mpfr_imported
-    gmpxx_imported
-    gmp_imported
-)
+    # Create an interface target that bundles everything
+    add_library(flint_external INTERFACE)
+    target_include_directories(flint_external INTERFACE 
+        ${DEPS_INCLUDE_DIR}
+        ${GMP_INCLUDE_DIR}
+        ${MPFR_INCLUDE_DIR}
+    )
+    target_link_libraries(flint_external INTERFACE
+        flint_imported
+        mpfr_imported
+        gmpxx_imported
+        gmp_imported
+    )
 
-set(FLINT_TARGET flint_external)
-set(FLINT_INCLUDE_DIRS ${DEPS_INCLUDE_DIR})
+    set(FLINT_TARGET flint_external)
+    set(FLINT_INCLUDE_DIRS ${DEPS_INCLUDE_DIR})
+endif()
