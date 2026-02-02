@@ -12,88 +12,66 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest] # add later ubuntu-latest, macos-14,
+        os: [ubuntu-latest] # add later macos-14, windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      # Linux: Cache FLINT dependencies build
-      - name: Cache FLINT dependencies (Linux)
+      # Linux: Install GMP and MPFR via apt-get
+      - name: Install GMP and MPFR (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgmp-dev libmpfr-dev
+
+      # Linux: Cache FLINT build
+      - name: Cache FLINT (Linux)
         if: runner.os == 'Linux'
         id: cache-flint
         uses: actions/cache@v4
         with:
           path: |
             /opt/flint-deps
-          key: ${{ runner.os }}-flint-deps-v2-${{ hashFiles('cmake/BuildDependencies.cmake') }}
+          key: ${{ runner.os }}-flint-only-v1-${{ hashFiles('cmake/BuildDependencies.cmake') }}
           restore-keys: |
-            ${{ runner.os }}-flint-deps-v2-
+            ${{ runner.os }}-flint-only-v1-
 
-      # Linux: Build FLINT and dependencies from source
-      - name: Build FLINT dependencies (Linux)
+      # Linux: Build FLINT from source (using system GMP/MPFR)
+      - name: Build FLINT (Linux)
         if: runner.os == 'Linux' && steps.cache-flint.outputs.cache-hit != 'true'
         run: |
-          set -e  # Exit on error
+          set -e
           
           # Create installation directory
           sudo mkdir -p /opt/flint-deps
           sudo chown $(whoami):$(whoami) /opt/flint-deps
           
-          # Set number of parallel jobs
           NPROC=$(nproc)
-          echo "Building with $NPROC parallel jobs"
-          
-          echo "Building FLINT dependencies from source..."
+          echo "Building FLINT with $NPROC parallel jobs"
           
           # Install build tools
-          sudo apt-get update
           sudo apt-get install -y build-essential wget ninja-build autoconf automake libtool m4
           
-          # Create build directory
+          # Build FLINT using system GMP/MPFR
+          echo "==== Building FLINT ===="
           mkdir -p /tmp/flint-build
           cd /tmp/flint-build
-          
-          # Build GMP
-          echo "==== Building GMP ===="
-          wget --progress=dot:mega https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz
-          tar -xf gmp-6.3.0.tar.xz
-          cd gmp-6.3.0
-          ./configure --prefix=/opt/flint-deps --enable-cxx --with-pic --disable-shared --enable-static
-          make -j$NPROC
-          make install
-          cd ..
-          
-          # Build MPFR
-          echo "==== Building MPFR ===="
-          wget --progress=dot:mega https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
-          tar -xf mpfr-4.2.1.tar.xz
-          cd mpfr-4.2.1
-          ./configure --prefix=/opt/flint-deps --with-gmp=/opt/flint-deps --with-pic --disable-shared --enable-static
-          make -j$NPROC
-          make install
-          cd ..
-          
-          # Build FLINT
-          echo "==== Building FLINT ===="
           wget --progress=dot:mega https://github.com/flintlib/flint/releases/download/v3.1.2/flint-3.1.2.tar.gz
           tar -xf flint-3.1.2.tar.gz
           cd flint-3.1.2
-          ./configure --prefix=/opt/flint-deps --with-gmp=/opt/flint-deps --with-mpfr=/opt/flint-deps --disable-shared --enable-static --with-pic CFLAGS=-fPIC CXXFLAGS=-fPIC
+          ./configure --prefix=/opt/flint-deps --disable-shared --enable-static --with-pic CFLAGS=-fPIC CXXFLAGS=-fPIC
           make -j$NPROC
           make install
           
-          echo "FLINT dependencies build complete"
-          
-          # Verify installation
-          echo "==== Verification ===="
+          echo "FLINT build complete"
           ls -la /opt/flint-deps/lib/
           ls -la /opt/flint-deps/include/
 
-      # Linux: Verify cached dependencies
-      - name: Verify FLINT dependencies (Linux)
+      # Linux: Verify FLINT installation
+      - name: Verify FLINT (Linux)
         if: runner.os == 'Linux'
         run: |
-          echo "==== FLINT Dependencies Status ===="
+          echo "==== FLINT Status ===="
           if [ -f /opt/flint-deps/lib/libflint.a ]; then
             echo "✓ libflint.a found"
             ls -lh /opt/flint-deps/lib/libflint.a

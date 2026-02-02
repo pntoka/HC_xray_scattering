@@ -206,36 +206,53 @@ endif()
 
 # Check if we should use pre-built dependencies from CI
 if(DEFINED ENV{CI} AND EXISTS "/opt/flint-deps/lib/libflint.a")
-    message(STATUS "Using pre-built FLINT dependencies from CI")
+    message(STATUS "Using pre-built FLINT from CI with system GMP/MPFR")
     
-    set(DEPS_INSTALL_DIR "/opt/flint-deps")
-    set(DEPS_INCLUDE_DIR "${DEPS_INSTALL_DIR}/include")
-    set(DEPS_LIB_DIR "${DEPS_INSTALL_DIR}/lib")
+    set(FLINT_INSTALL_DIR "/opt/flint-deps")
     
-    # Create imported targets for pre-built libraries
-    add_library(gmp_imported STATIC IMPORTED GLOBAL)
+    # Find system GMP and MPFR
+    find_library(GMP_LIBRARY NAMES gmp REQUIRED)
+    find_library(GMPXX_LIBRARY NAMES gmpxx REQUIRED)
+    find_library(MPFR_LIBRARY NAMES mpfr REQUIRED)
+    find_path(GMP_INCLUDE_DIR NAMES gmp.h REQUIRED)
+    find_path(MPFR_INCLUDE_DIR NAMES mpfr.h REQUIRED)
+    
+    message(STATUS "Found system GMP: ${GMP_LIBRARY}")
+    message(STATUS "Found system MPFR: ${MPFR_LIBRARY}")
+    
+    # Create imported targets for system libraries
+    add_library(gmp_imported SHARED IMPORTED GLOBAL)
     set_target_properties(gmp_imported PROPERTIES
-        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libgmp.a
+        IMPORTED_LOCATION ${GMP_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
     )
 
-    add_library(gmpxx_imported STATIC IMPORTED GLOBAL)
+    add_library(gmpxx_imported SHARED IMPORTED GLOBAL)
     set_target_properties(gmpxx_imported PROPERTIES
-        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libgmpxx.a
+        IMPORTED_LOCATION ${GMPXX_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
     )
 
-    add_library(mpfr_imported STATIC IMPORTED GLOBAL)
+    add_library(mpfr_imported SHARED IMPORTED GLOBAL)
     set_target_properties(mpfr_imported PROPERTIES
-        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libmpfr.a
+        IMPORTED_LOCATION ${MPFR_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${MPFR_INCLUDE_DIR}
     )
 
+    # Create imported target for pre-built FLINT
     add_library(flint_imported STATIC IMPORTED GLOBAL)
     set_target_properties(flint_imported PROPERTIES
-        IMPORTED_LOCATION ${DEPS_LIB_DIR}/libflint.a
+        IMPORTED_LOCATION ${FLINT_INSTALL_DIR}/lib/libflint.a
+        INTERFACE_INCLUDE_DIRECTORIES ${FLINT_INSTALL_DIR}/include
     )
 
     # Create an interface target that bundles everything
     add_library(flint_external INTERFACE)
-    target_include_directories(flint_external INTERFACE ${DEPS_INCLUDE_DIR})
+    target_include_directories(flint_external INTERFACE 
+        ${FLINT_INSTALL_DIR}/include
+        ${GMP_INCLUDE_DIR}
+        ${MPFR_INCLUDE_DIR}
+    )
     target_link_libraries(flint_external INTERFACE
         flint_imported
         mpfr_imported
@@ -247,7 +264,7 @@ if(DEFINED ENV{CI} AND EXISTS "/opt/flint-deps/lib/libflint.a")
     add_custom_target(ep_flint)
 
     set(FLINT_TARGET flint_external)
-    set(FLINT_INCLUDE_DIRS ${DEPS_INCLUDE_DIR})
+    set(FLINT_INCLUDE_DIRS ${FLINT_INSTALL_DIR}/include)
     return()
 endif()
 
