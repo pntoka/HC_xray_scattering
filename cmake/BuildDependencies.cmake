@@ -130,59 +130,24 @@ if(WIN32)
 endif()
 
 # ============================================================================
-# GMP (required by FLINT)
+# Linux/macOS: Use system GMP/MPFR, build FLINT from source
 # ============================================================================
-message(STATUS "Will build GMP from source")
+message(STATUS "Linux/macOS build: using system GMP/MPFR, building FLINT from source")
 
-ExternalProject_Add(ep_gmp
-    URL https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz
-    URL_HASH SHA256=a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/downloads
-    CONFIGURE_COMMAND <SOURCE_DIR>/configure
-        --prefix=${DEPS_INSTALL_DIR}
-        --enable-cxx
-        --with-pic
-        --disable-shared
-        --enable-static
-    BUILD_COMMAND make -j${NPROC}
-    INSTALL_COMMAND make install
-    BUILD_IN_SOURCE FALSE
-    BUILD_BYPRODUCTS 
-        ${DEPS_LIB_DIR}/libgmp.a
-        ${DEPS_LIB_DIR}/libgmpxx.a
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON
-)
+# Find system GMP and MPFR
+find_library(GMP_LIBRARY NAMES gmp REQUIRED)
+find_library(GMPXX_LIBRARY NAMES gmpxx REQUIRED)
+find_library(MPFR_LIBRARY NAMES mpfr REQUIRED)
+find_path(GMP_INCLUDE_DIR NAMES gmp.h REQUIRED)
+find_path(MPFR_INCLUDE_DIR NAMES mpfr.h REQUIRED)
+
+message(STATUS "Found system GMP: ${GMP_LIBRARY}")
+message(STATUS "Found system GMP include: ${GMP_INCLUDE_DIR}")
+message(STATUS "Found system MPFR: ${MPFR_LIBRARY}")
+message(STATUS "Found system MPFR include: ${MPFR_INCLUDE_DIR}")
 
 # ============================================================================
-# MPFR (required by FLINT, depends on GMP)
-# ============================================================================
-message(STATUS "Will build MPFR from source")
-
-ExternalProject_Add(ep_mpfr
-    URL https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz
-    URL_HASH SHA256=277807353a6726978996945af13e52829e3abd7a9a5b7fb2793894e18f1fcbb2
-    DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/downloads
-    CONFIGURE_COMMAND <SOURCE_DIR>/configure
-        --prefix=${DEPS_INSTALL_DIR}
-        --with-gmp=${DEPS_INSTALL_DIR}
-        --with-pic
-        --disable-shared
-        --enable-static
-    BUILD_COMMAND make -j${NPROC}
-    INSTALL_COMMAND make install
-    BUILD_IN_SOURCE FALSE
-    DEPENDS ep_gmp
-    BUILD_BYPRODUCTS ${DEPS_LIB_DIR}/libmpfr.a
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON
-)
-
-# ============================================================================
-# FLINT (uses Autotools, depends on GMP and MPFR)
+# FLINT (uses Autotools, depends on system GMP and MPFR)
 # ============================================================================
 message(STATUS "Will build FLINT from source")
 
@@ -204,77 +169,11 @@ if(NOT EXISTS ${FLINT_ARCHIVE})
     message(STATUS "FLINT download complete")
 endif()
 
-# Check if we should use pre-built dependencies from CI
-if(DEFINED ENV{CI} AND EXISTS "/opt/flint-deps/lib/libflint.a")
-    message(STATUS "Using pre-built FLINT from CI with system GMP/MPFR")
-    
-    set(FLINT_INSTALL_DIR "/opt/flint-deps")
-    
-    # Find system GMP and MPFR
-    find_library(GMP_LIBRARY NAMES gmp REQUIRED)
-    find_library(GMPXX_LIBRARY NAMES gmpxx REQUIRED)
-    find_library(MPFR_LIBRARY NAMES mpfr REQUIRED)
-    find_path(GMP_INCLUDE_DIR NAMES gmp.h REQUIRED)
-    find_path(MPFR_INCLUDE_DIR NAMES mpfr.h REQUIRED)
-    
-    message(STATUS "Found system GMP: ${GMP_LIBRARY}")
-    message(STATUS "Found system MPFR: ${MPFR_LIBRARY}")
-    
-    # Create imported targets for system libraries
-    add_library(gmp_imported SHARED IMPORTED GLOBAL)
-    set_target_properties(gmp_imported PROPERTIES
-        IMPORTED_LOCATION ${GMP_LIBRARY}
-        INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
-    )
-
-    add_library(gmpxx_imported SHARED IMPORTED GLOBAL)
-    set_target_properties(gmpxx_imported PROPERTIES
-        IMPORTED_LOCATION ${GMPXX_LIBRARY}
-        INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
-    )
-
-    add_library(mpfr_imported SHARED IMPORTED GLOBAL)
-    set_target_properties(mpfr_imported PROPERTIES
-        IMPORTED_LOCATION ${MPFR_LIBRARY}
-        INTERFACE_INCLUDE_DIRECTORIES ${MPFR_INCLUDE_DIR}
-    )
-
-    # Create imported target for pre-built FLINT
-    add_library(flint_imported STATIC IMPORTED GLOBAL)
-    set_target_properties(flint_imported PROPERTIES
-        IMPORTED_LOCATION ${FLINT_INSTALL_DIR}/lib/libflint.a
-        INTERFACE_INCLUDE_DIRECTORIES ${FLINT_INSTALL_DIR}/include
-    )
-
-    # Create an interface target that bundles everything
-    add_library(flint_external INTERFACE)
-    target_include_directories(flint_external INTERFACE 
-        ${FLINT_INSTALL_DIR}/include
-        ${GMP_INCLUDE_DIR}
-        ${MPFR_INCLUDE_DIR}
-    )
-    target_link_libraries(flint_external INTERFACE
-        flint_imported
-        mpfr_imported
-        gmpxx_imported
-        gmp_imported
-    )
-
-    # Create dummy ep_flint target for compatibility
-    add_custom_target(ep_flint)
-
-    set(FLINT_TARGET flint_external)
-    set(FLINT_INCLUDE_DIRS ${FLINT_INSTALL_DIR}/include)
-    return()
-endif()
-
 ExternalProject_Add(ep_flint
     URL ${FLINT_ARCHIVE}
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     CONFIGURE_COMMAND <SOURCE_DIR>/configure
         --prefix=${DEPS_INSTALL_DIR}
-        --with-gmp=${DEPS_INSTALL_DIR}
-        --with-mpfr=${DEPS_INSTALL_DIR}
         --disable-shared
         --enable-static
         --with-pic
@@ -283,41 +182,46 @@ ExternalProject_Add(ep_flint
     BUILD_COMMAND make -j${NPROC}
     INSTALL_COMMAND make install
     BUILD_IN_SOURCE TRUE
-    DEPENDS ep_mpfr
     BUILD_BYPRODUCTS ${DEPS_LIB_DIR}/libflint.a
     LOG_CONFIGURE OFF
     LOG_BUILD OFF
     LOG_INSTALL OFF
 )
 
-# Create imported targets with proper DEPENDS
-add_library(gmp_imported STATIC IMPORTED GLOBAL)
+# Create imported targets for system libraries
+add_library(gmp_imported SHARED IMPORTED GLOBAL)
 set_target_properties(gmp_imported PROPERTIES
-    IMPORTED_LOCATION ${DEPS_LIB_DIR}/libgmp.a
+    IMPORTED_LOCATION ${GMP_LIBRARY}
+    INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
 )
-add_dependencies(gmp_imported ep_gmp)
 
-add_library(gmpxx_imported STATIC IMPORTED GLOBAL)
+add_library(gmpxx_imported SHARED IMPORTED GLOBAL)
 set_target_properties(gmpxx_imported PROPERTIES
-    IMPORTED_LOCATION ${DEPS_LIB_DIR}/libgmpxx.a
+    IMPORTED_LOCATION ${GMPXX_LIBRARY}
+    INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
 )
-add_dependencies(gmpxx_imported ep_gmp)
 
-add_library(mpfr_imported STATIC IMPORTED GLOBAL)
+add_library(mpfr_imported SHARED IMPORTED GLOBAL)
 set_target_properties(mpfr_imported PROPERTIES
-    IMPORTED_LOCATION ${DEPS_LIB_DIR}/libmpfr.a
+    IMPORTED_LOCATION ${MPFR_LIBRARY}
+    INTERFACE_INCLUDE_DIRECTORIES ${MPFR_INCLUDE_DIR}
 )
-add_dependencies(mpfr_imported ep_mpfr)
 
+# Create imported target for FLINT
 add_library(flint_imported STATIC IMPORTED GLOBAL)
 set_target_properties(flint_imported PROPERTIES
     IMPORTED_LOCATION ${DEPS_LIB_DIR}/libflint.a
+    INTERFACE_INCLUDE_DIRECTORIES ${DEPS_INCLUDE_DIR}
 )
 add_dependencies(flint_imported ep_flint)
 
 # Create an interface target that bundles everything
 add_library(flint_external INTERFACE)
-target_include_directories(flint_external INTERFACE ${DEPS_INCLUDE_DIR})
+target_include_directories(flint_external INTERFACE 
+    ${DEPS_INCLUDE_DIR}
+    ${GMP_INCLUDE_DIR}
+    ${MPFR_INCLUDE_DIR}
+)
 target_link_libraries(flint_external INTERFACE
     flint_imported
     mpfr_imported
