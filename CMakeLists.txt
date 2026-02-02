@@ -45,7 +45,25 @@ if(DEFINED Python3_ROOT_DIR AND NOT Python3_INCLUDE_DIRS)
 endif()
 
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
-find_package(pybind11 CONFIG REQUIRED)
+
+# Try to find pybind11 via CMake config first, fall back to Python module
+find_package(pybind11 CONFIG QUIET)
+if(NOT pybind11_FOUND)
+    message(STATUS "pybind11 not found via CMake config, trying Python module...")
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" -m pybind11 --cmakedir
+        OUTPUT_VARIABLE pybind11_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE pybind11_RESULT
+    )
+    if(pybind11_RESULT EQUAL 0)
+        message(STATUS "Found pybind11 CMake dir: ${pybind11_DIR}")
+        find_package(pybind11 CONFIG REQUIRED)
+    else()
+        message(FATAL_ERROR "pybind11 not found. Please install it via pip.")
+    endif()
+endif()
+
 message(STATUS "Found pybind11: ${pybind11_VERSION}")
 message(STATUS "Python3 executable: ${Python3_EXECUTABLE}")
 message(STATUS "Python3 include dirs: ${Python3_INCLUDE_DIRS}")
