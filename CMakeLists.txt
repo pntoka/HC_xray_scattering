@@ -100,7 +100,65 @@ endif()
 # ============================================================================
 # FLINT and dependencies (GMP, MPFR)
 # ============================================================================
-if(USE_SYSTEM_LIBS)
+# Check if we should use pre-built FLINT from CI (with system GMP/MPFR)
+if(DEFINED ENV{CI} AND EXISTS "/opt/flint-deps/lib/libflint.a")
+    message(STATUS "Using pre-built FLINT from CI with system GMP/MPFR")
+    
+    set(FLINT_INSTALL_DIR "/opt/flint-deps")
+    
+    # Find system GMP and MPFR
+    find_library(GMP_LIBRARY NAMES gmp REQUIRED)
+    find_library(GMPXX_LIBRARY NAMES gmpxx REQUIRED)
+    find_library(MPFR_LIBRARY NAMES mpfr REQUIRED)
+    find_path(GMP_INCLUDE_DIR NAMES gmp.h REQUIRED)
+    find_path(MPFR_INCLUDE_DIR NAMES mpfr.h REQUIRED)
+    
+    message(STATUS "Found system GMP: ${GMP_LIBRARY}")
+    message(STATUS "Found system MPFR: ${MPFR_LIBRARY}")
+    
+    # Create imported targets for system libraries
+    add_library(gmp_imported SHARED IMPORTED GLOBAL)
+    set_target_properties(gmp_imported PROPERTIES
+        IMPORTED_LOCATION ${GMP_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
+    )
+
+    add_library(gmpxx_imported SHARED IMPORTED GLOBAL)
+    set_target_properties(gmpxx_imported PROPERTIES
+        IMPORTED_LOCATION ${GMPXX_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${GMP_INCLUDE_DIR}
+    )
+
+    add_library(mpfr_imported SHARED IMPORTED GLOBAL)
+    set_target_properties(mpfr_imported PROPERTIES
+        IMPORTED_LOCATION ${MPFR_LIBRARY}
+        INTERFACE_INCLUDE_DIRECTORIES ${MPFR_INCLUDE_DIR}
+    )
+
+    # Create imported target for pre-built FLINT
+    add_library(flint_imported STATIC IMPORTED GLOBAL)
+    set_target_properties(flint_imported PROPERTIES
+        IMPORTED_LOCATION ${FLINT_INSTALL_DIR}/lib/libflint.a
+        INTERFACE_INCLUDE_DIRECTORIES ${FLINT_INSTALL_DIR}/include
+    )
+
+    # Create an interface target that bundles everything
+    add_library(flint_external INTERFACE)
+    target_include_directories(flint_external INTERFACE 
+        ${FLINT_INSTALL_DIR}/include
+        ${GMP_INCLUDE_DIR}
+        ${MPFR_INCLUDE_DIR}
+    )
+    target_link_libraries(flint_external INTERFACE
+        flint_imported
+        mpfr_imported
+        gmpxx_imported
+        gmp_imported
+    )
+
+    set(FLINT_TARGET flint_external)
+    set(USE_SYSTEM_LIBS OFF)  # Override since we're using our custom setup
+elseif(USE_SYSTEM_LIBS)
     message(STATUS "Using system-installed FLINT")
     
     if(WIN32 AND DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
