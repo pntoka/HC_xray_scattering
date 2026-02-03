@@ -291,4 +291,3 @@ ExternalProject_Add(ep_flint
 
     set(FLINT_TARGET flint_external)
     set(FLINT_INCLUDE_DIRS ${DEPS_INCLUDE_DIR})
-endif()

@@ -225,10 +225,9 @@ elseif(UNIX AND NOT APPLE)
         target_link_options(iobs_ngc PRIVATE
             -Wl,--whole-archive
             ${DEPS_LIB_DIR}/libflint.a
-            ${DEPS_LIB_DIR}/libmpfr.a
-            ${DEPS_LIB_DIR}/libgmp.a
             -Wl,--no-whole-archive
         )
+        # System GMP/MPFR are already linked via flint_external target
     endif()
 endif()
 
