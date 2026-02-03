@@ -230,7 +230,6 @@ if(NOT EXISTS ${FLINT_ARCHIVE})
 endif()
 
 ExternalProject_Add(ep_flint
-    URL ${FLINT_ARCHIVE}
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     CONFIGURE_COMMAND <SOURCE_DIR>/configure
         --prefix=${DEPS_INSTALL_DIR}
@@ -246,6 +245,7 @@ ExternalProject_Add(ep_flint
     LOG_CONFIGURE OFF
     LOG_BUILD OFF
     LOG_INSTALL OFF
+    URL ${FLINT_ARCHIVE}
 )
 
     # Create imported targets for system libraries
