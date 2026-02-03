@@ -97,9 +97,9 @@ For Ubuntu and Debian systems, you must first install GMP and MPFR system librar
 The installation process will automatically build FLINT 3 from source using the system GMP and MPFR libraries.
 
 If FLINT 3 is already installed then `iobs_ngc` can be installed using the command:
-    ```bash
-    pip install . --config-settings=cmake.define.USE_SYSTEM_LIBS=ON
-    ```
+   ```bash
+   pip install . --config-settings=cmake.define.USE_SYSTEM_LIBS=ON
+   ```
 
 ### General Notes
 
