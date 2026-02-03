@@ -26,12 +26,26 @@ option(FETCH_BOOST "Download Boost via FetchContent instead of using system Boos
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # ============================================================================
-# Conda environment support (only when using system libs)
+# Conda and Homebrew environment support (only when using system libs)
 # ============================================================================
-if(USE_SYSTEM_LIBS)
+if(USE_SYSTEM_LIBS OR NOT FETCH_BOOST)
     if(DEFINED ENV{CONDA_PREFIX})
         list(PREPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
         message(STATUS "Added CONDA_PREFIX to CMAKE_PREFIX_PATH: $ENV{CONDA_PREFIX}")
+    endif()
+    
+    # Add Homebrew paths for macOS
+    if(APPLE)
+        execute_process(
+            COMMAND brew --prefix
+            OUTPUT_VARIABLE HOMEBREW_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(HOMEBREW_PREFIX)
+            list(PREPEND CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}")
+            message(STATUS "Added Homebrew prefix to CMAKE_PREFIX_PATH: ${HOMEBREW_PREFIX}")
+        endif()
     endif()
 endif()
 
@@ -45,7 +59,25 @@ if(DEFINED Python3_ROOT_DIR AND NOT Python3_INCLUDE_DIRS)
 endif()
 
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
-find_package(pybind11 CONFIG REQUIRED)
+
+# Try to find pybind11 via CMake config first, fall back to Python module
+find_package(pybind11 CONFIG QUIET)
+if(NOT pybind11_FOUND)
+    message(STATUS "pybind11 not found via CMake config, trying Python module...")
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" -m pybind11 --cmakedir
+        OUTPUT_VARIABLE pybind11_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE pybind11_RESULT
+    )
+    if(pybind11_RESULT EQUAL 0)
+        message(STATUS "Found pybind11 CMake dir: ${pybind11_DIR}")
+        find_package(pybind11 CONFIG REQUIRED)
+    else()
+        message(FATAL_ERROR "pybind11 not found. Please install it via pip.")
+    endif()
+endif()
+
 message(STATUS "Found pybind11: ${pybind11_VERSION}")
 message(STATUS "Python3 executable: ${Python3_EXECUTABLE}")
 message(STATUS "Python3 include dirs: ${Python3_INCLUDE_DIRS}")
@@ -64,9 +96,9 @@ if(FETCH_BOOST)
     
     FetchContent_Declare(
         Boost
-        URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         EXCLUDE_FROM_ALL
+        URL "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz"
     )
     FetchContent_MakeAvailable(Boost)
     
@@ -112,7 +144,28 @@ if(USE_SYSTEM_LIBS)
         set(FLINT_TARGET flint_external)
     endif()
 else()
-    message(STATUS "Building FLINT from source (GMP/MPFR from vcpkg on Windows)")
+    message(STATUS "Building FLINT from source (requires system GMP/MPFR on Linux)")
+    
+    # On Linux, check for system GMP/MPFR before proceeding
+    if(UNIX AND NOT APPLE)
+        find_library(GMP_LIBRARY NAMES gmp)
+        find_library(MPFR_LIBRARY NAMES mpfr)
+        
+        if(NOT GMP_LIBRARY OR NOT MPFR_LIBRARY)
+            message(FATAL_ERROR 
+                "\n========================================\n"
+                "ERROR: System GMP and MPFR libraries not found!\n"
+                "\n"
+                "Please install them using:\n"
+                "  sudo apt-get update\n"
+                "  sudo apt-get install -y libgmp-dev libmpfr-dev\n"
+                "\n"
+                "Then retry: pip install .\n"
+                "========================================\n"
+            )
+        endif()
+    endif()
+    
     include(BuildDependencies)
 endif()
 
@@ -158,19 +211,24 @@ if(WIN32)
     # Windows: link statically
     target_link_libraries(iobs_ngc PRIVATE ${FLINT_TARGET})
 elseif(APPLE)
-    target_link_options(iobs_ngc PRIVATE
-        -Wl,-force_load,${DEPS_LIB_DIR}/libflint.a
-        -Wl,-force_load,${DEPS_LIB_DIR}/libmpfr.a
-        -Wl,-force_load,${DEPS_LIB_DIR}/libgmp.a
-    )
+    # Only use force_load for static libraries built from source
+    if(NOT USE_SYSTEM_LIBS)
+        target_link_options(iobs_ngc PRIVATE
+            -Wl,-force_load,${DEPS_LIB_DIR}/libflint.a
+            -Wl,-force_load,${DEPS_LIB_DIR}/libmpfr.a
+            -Wl,-force_load,${DEPS_LIB_DIR}/libgmp.a
+        )
+    endif()
 elseif(UNIX AND NOT APPLE)
-    target_link_options(iobs_ngc PRIVATE
-        -Wl,--whole-archive
-        ${DEPS_LIB_DIR}/libflint.a
-        ${DEPS_LIB_DIR}/libmpfr.a
-        ${DEPS_LIB_DIR}/libgmp.a
-        -Wl,--no-whole-archive
-    )
+    # Only use whole-archive for static libraries built from source
+    if(NOT USE_SYSTEM_LIBS)
+        target_link_options(iobs_ngc PRIVATE
+            -Wl,--whole-archive
+            ${DEPS_LIB_DIR}/libflint.a
+            -Wl,--no-whole-archive
+        )
+        # System GMP/MPFR are already linked via flint_external target
+    endif()
 endif()
 
 # Add math defines
