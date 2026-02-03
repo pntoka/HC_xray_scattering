@@ -21,7 +21,7 @@ All installation commands below should be run from within the cloned repository 
 The easiest way to install on Windows is to use the prebuilt wheel files included in the repository:
 
 ```bash
-pip install . --find-links dist/
+pip install --find-links dist/ iobs_ngc
 ```
 
 This will install `iobs_ngc` using the precompiled wheels from the `dist/` folder, avoiding the need to build from source.
@@ -53,16 +53,10 @@ If you need to build from source on Windows, use [vcpkg](https://github.com/micr
 
 #### Recommended: Install from Prebuilt Wheels
 
-Install using the published wheel file:
+Install using the prebuilt wheel file in the repository:
 
 ```bash
-pip install iobs_ngc
-```
-
-Or if installing from the repository:
-
-```bash
-pip install . --find-links dist/
+pip install --find-links dist/ iobs_ngc
 ```
 
 #### Build from Source with System Libraries
