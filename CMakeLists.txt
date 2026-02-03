@@ -26,7 +26,7 @@ option(FETCH_BOOST "Download Boost via FetchContent instead of using system Boos
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # ============================================================================
-# Conda environment support (only when using system libs)
+# Conda and Homebrew environment support (only when using system libs)
 # ============================================================================
 if(USE_SYSTEM_LIBS OR NOT FETCH_BOOST)
     if(DEFINED ENV{CONDA_PREFIX})
@@ -144,7 +144,28 @@ if(USE_SYSTEM_LIBS)
         set(FLINT_TARGET flint_external)
     endif()
 else()
-    message(STATUS "Building FLINT from source (GMP/MPFR from vcpkg on Windows)")
+    message(STATUS "Building FLINT from source (requires system GMP/MPFR on Linux)")
+    
+    # On Linux, check for system GMP/MPFR before proceeding
+    if(UNIX AND NOT APPLE)
+        find_library(GMP_LIBRARY NAMES gmp)
+        find_library(MPFR_LIBRARY NAMES mpfr)
+        
+        if(NOT GMP_LIBRARY OR NOT MPFR_LIBRARY)
+            message(FATAL_ERROR 
+                "\n========================================\n"
+                "ERROR: System GMP and MPFR libraries not found!\n"
+                "\n"
+                "Please install them using:\n"
+                "  sudo apt-get update\n"
+                "  sudo apt-get install -y libgmp-dev libmpfr-dev\n"
+                "\n"
+                "Then retry: pip install .\n"
+                "========================================\n"
+            )
+        endif()
+    endif()
+    
     include(BuildDependencies)
 endif()
 

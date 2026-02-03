@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-14, macos-15-intel] # add later macos-14, windows-latest
+        os: [macos-14, macos-15-intel, windows-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -137,3 +137,29 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+
+  publish_to_repo:
+    name: Publish wheels to repository
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main  # or your default branch name
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Commit and push wheels
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dist/
+          git commit -m "Add built wheels from ${{ github.ref_name }}" || echo "No changes to commit"
+          git push
