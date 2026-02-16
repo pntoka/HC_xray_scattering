@@ -169,22 +169,7 @@ PYBIND11_MODULE(iobs_ngc, m) {
     // Binding the iObs calculator with the IOBSParameters
     py::class_<IOBSCalculator>(m, "IOBSCalculator")
         .def(py::init<>())
-        .def("calculate", [](IOBSCalculator& self, const IOBSParameters& params, std::vector<double>& s_values) {
-            std::vector<csp> cspData = params.getCSPData();
-            return self.calculate(
-                s_values,
-                params.useA, params.density, params.absorptionCorrection,
-                params.sampleThickness, params.transmission,
-                params.useGradient, params.g,
-                params.useCorrAutoColl, params.par_r, params.par_delta, params.par_l,
-                params.const1, params.const2, params.useQ, params.b, params.k,
-                params.cno, &cspData,
-                params.cN, params.cO, params.cS, params.cH,
-                params.dan, static_cast<Enumerations::radiationType>(params.radiation),
-                params.wavelength, params.useP, params.polarizedBeam, params.polarizationDegree,
-                params.coh, params.inc
-            );
-        });
+        .def("calculate", &IOBSCalculator::calculate);
 
     py::class_<Calculations>(m, "Calculations")
         .def(py::init<>())

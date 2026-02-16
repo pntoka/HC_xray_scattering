@@ -270,3 +270,11 @@ message(STATUS "  Python:          ${Python_EXECUTABLE}")
 message(STATUS "  pybind11:        ${pybind11_VERSION}")
 message(STATUS "======================================")
 message(STATUS "")
+
+# Find OpenMP
+find_package(OpenMP REQUIRED)
+
+# # Link OpenMP to your executable/library
+target_link_libraries(iobs_ngc PRIVATE OpenMP::OpenMP_CXX)
+# target_link_libraries(iobs_calculator PRIVATE OpenMP::OpenMP_CXX)
+# target_link_libraries(test_fitter PRIVATE OpenMP::OpenMP_CXX)
