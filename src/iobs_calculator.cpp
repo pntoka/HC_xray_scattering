@@ -1,4 +1,5 @@
 #include "iobs_calculator.h"
+#include <omp.h>  // Add OpenMP header
 
 std::vector<double> IOBSCalculator::calculate(
     const std::vector<double>& s_values,
@@ -13,19 +14,22 @@ std::vector<double> IOBSCalculator::calculate(
     double wavelength, bool useP, bool polarizedBeam,
     double polarizationDegree, bool coh, bool inc) {
     
-    Calculations calculations;
-    std::vector<double> results;
-    results.reserve(s_values.size());
+    std::vector<double> results(s_values.size());
 
-    for (double s : s_values) {
-        // std::vector<csp> cspDataCopy = cspData;
-        double result = calculations.iObs(
-            useA, density, absorptionCorrection, sampleThickness, transmission,
-            useGradient, g, useCorrAutoColl, par_r, par_delta, par_l,
-            const1, const2, useQ, b, k, cno, cspData, cN, cO, cS, cH,
-            dan, s, radiationType, wavelength, useP, polarizedBeam,
-            polarizationDegree, coh, inc);
-        results.push_back(result);
+    // Parallel loop - each thread gets its own Calculations object
+    #pragma omp parallel
+    {
+        Calculations calculations;  // Thread-local instance
+        
+        #pragma omp for schedule(dynamic, 10)
+        for (size_t i = 0; i < s_values.size(); ++i) {
+            results[i] = calculations.iObs(
+                useA, density, absorptionCorrection, sampleThickness, transmission,
+                useGradient, g, useCorrAutoColl, par_r, par_delta, par_l,
+                const1, const2, useQ, b, k, cno, cspData, cN, cO, cS, cH,
+                dan, s_values[i], radiationType, wavelength, useP, polarizedBeam,
+                polarizationDegree, coh, inc);
+        }
     }
 
     return results;

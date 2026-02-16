@@ -71,44 +71,36 @@ double Calculations::factln(int n) {
 std::complex<double> Calculations::hypgeo2F1(double a, double b, double c, std::complex<double> z){
     const slong prec = 256;
     
-    // Initialize acb variables
-    acb_t a_acb, b_acb, c_acb, z_acb, result;
-    acb_init(a_acb);
-    acb_init(b_acb);
-    acb_init(c_acb);
-    acb_init(z_acb);
-    acb_init(result);
+    // Thread-local to reuse across calls
+    thread_local acb_t a_acb, b_acb, c_acb, z_acb, result;
+    thread_local arb_t re, im;
+    thread_local bool initialized = false;
     
-    // Set input parameters
+    if (!initialized) {
+        acb_init(a_acb);
+        acb_init(b_acb);
+        acb_init(c_acb);
+        acb_init(z_acb);
+        acb_init(result);
+        arb_init(re);
+        arb_init(im);
+        initialized = true;
+    }
+    
     acb_set_d(a_acb, a);
     acb_set_d(b_acb, b);
     acb_set_d(c_acb, c);
     acb_set_d_d(z_acb, z.real(), z.imag());
     
-    // Compute 2F1
     acb_hypgeom_2f1(result, a_acb, b_acb, c_acb, z_acb, 0, prec);
     
-	// Extract real and imaginary parts
-	arb_t re, im;
-	arb_init(re);
-	arb_init(im);
-	
-	acb_get_real(re, result);
-	acb_get_imag(im, result);
-	
-	double real_part = arf_get_d(arb_midref(re), ARF_RND_NEAR);
-	double imag_part = arf_get_d(arb_midref(im), ARF_RND_NEAR);
-	
-	// Clean up
-	arb_clear(re);
-	arb_clear(im);
-    acb_clear(a_acb);
-    acb_clear(b_acb);
-    acb_clear(c_acb);
-    acb_clear(z_acb);
-    acb_clear(result);
+    acb_get_real(re, result);
+    acb_get_imag(im, result);
     
-    return std::complex<double>(real_part, imag_part);
+    return std::complex<double>(
+        arf_get_d(arb_midref(re), ARF_RND_NEAR),
+        arf_get_d(arb_midref(im), ARF_RND_NEAR)
+    );
 }
 
 

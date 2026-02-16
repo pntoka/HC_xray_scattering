@@ -5,6 +5,7 @@
 #include "iobs_parameters.h"
 #include "structs.h"
 #include "iobs_calculator.h"
+// #include "iobs_fitter.h"
 
 namespace py = pybind11;
 
@@ -218,4 +219,32 @@ PYBIND11_MODULE(iobs_ngc, m) {
         .def("Iintra", &Calculations::Iintra)
         .def("IcomS", &Calculations::IcomS);
 
+    // // Bind FitResult
+    // py::class_<FitResult>(m, "FitResult")
+    //     .def_readonly("final_params", &FitResult::final_params)
+    //     .def_readonly("final_params_scaled", &FitResult::final_params_scaled)
+    //     .def_readonly("fitted_values", &FitResult::fitted_values)
+    //     .def_readonly("final_cost", &FitResult::final_cost)
+    //     .def_readonly("r_squared", &FitResult::r_squared)
+    //     .def_readonly("rss", &FitResult::rss)
+    //     .def_readonly("num_iterations", &FitResult::num_iterations)
+    //     .def_readonly("num_function_evaluations", &FitResult::num_function_evaluations)
+    //     .def_readonly("success", &FitResult::success)
+    //     .def_readonly("convergence_message", &FitResult::convergence_message)
+    //     .def_readonly("execution_time_seconds", &FitResult::execution_time_seconds);
+
+    // // Bind IOBSFitter
+    // py::class_<IOBSFitter>(m, "IOBSFitter")
+    //     .def(py::init<>())
+    //     .def("fit", &IOBSFitter::fit, 
+    //          py::arg("s_values"), 
+    //          py::arg("intensities"), 
+    //          py::arg("initial_params"),
+    //          py::arg("params_to_fit") = std::map<std::string, bool>())
+    //     .def("set_max_iterations", &IOBSFitter::setMaxIterations)
+    //     .def("set_function_tolerance", &IOBSFitter::setFunctionTolerance)
+    //     .def("set_parameter_tolerance", &IOBSFitter::setParameterTolerance)
+    //     .def("set_gradient_tolerance", &IOBSFitter::setGradientTolerance)
+    //     .def("set_num_threads", &IOBSFitter::setNumThreads)
+    //     .def("set_verbose", &IOBSFitter::setVerbose);
 }

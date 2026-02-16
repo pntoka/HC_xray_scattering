@@ -169,6 +169,9 @@ else()
     include(BuildDependencies)
 endif()
 
+# Add Ceres dependency
+find_package(Ceres REQUIRED)
+
 # ============================================================================
 # Sources
 # ============================================================================
@@ -176,6 +179,7 @@ set(SOURCES
     src/calculations.cpp
     src/iobs_calculator.cpp
     src/python_bindings.cpp
+    src/iobs_fitter.cpp
 )
 
 # ============================================================================
@@ -204,6 +208,7 @@ endif()
 target_link_libraries(iobs_ngc PRIVATE
     ${FLINT_TARGET}
     ${BOOST_TARGET}
+    Ceres::ceres
 )
 
 # Platform-specific linking
@@ -270,3 +275,10 @@ message(STATUS "  Python:          ${Python_EXECUTABLE}")
 message(STATUS "  pybind11:        ${pybind11_VERSION}")
 message(STATUS "======================================")
 message(STATUS "")
+
+# Find OpenMP
+find_package(OpenMP REQUIRED)
+
+# Link OpenMP to your executable/library
+target_link_libraries(iobs_calculator PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(test_fitter PRIVATE OpenMP::OpenMP_CXX)
