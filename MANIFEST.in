@@ -4,3 +4,4 @@ include README.md
 recursive-include cmake *.cmake
 recursive-include include *.h *.hpp
 recursive-include src *.cpp *.c *.hpp *.h
+recursive-include iobs_ngc *.py
