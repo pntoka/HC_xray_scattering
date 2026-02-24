@@ -1,5 +1,7 @@
 # HC_xray_scattering
-Developing toolkit for refinement of non-graphitic carbon scattering data
+Developing toolkit for refinement of non-graphitic carbon scattering data.
+
+The refinement approach used in this repository is based on the method developed by W. Ruland and B. Smarsly ( J. Appl. Cryst., 35, 624-633, [doi:10.1107/S0021889802011007](https://doi.org/10.1107/S0021889802011007)) and the software implementation developed by O. Osswald (C - Journal of Carbon Research, 8(4), 78, [doi:10.3390/c8040078](https://doi.org/10.3390/c8040078))
 
 ## Installation
 
