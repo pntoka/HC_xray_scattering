@@ -1,3 +1,4 @@
+// This code is a modified version of the implementation developed by O. Osswald found here https://github.com/osswaldo/OctCarb/blob/main/Octave/oct-files/Self-compilation/iObsOct/calculations.cpp
 #include <chrono>
 #include <iostream>
 #include <array>
