@@ -78,7 +78,7 @@ jobs:
           }
           
           # Install all dependencies with dynamic triplet (much faster than static)
-          .\vcpkg.exe install gmp:x64-windows mpfr:x64-windows flint:x64-windows arb:x64-windows pthreads:x64-windows pkgconf:x64-windows --clean-after-build
+          .\vcpkg.exe install gmp:x64-windows mpfr:x64-windows flint:x64-windows pthreads:x64-windows pkgconf:x64-windows --clean-after-build
           
           # Add pkgconf to PATH for subsequent steps
           echo "C:\vcpkg\installed\x64-windows\tools\pkgconf" | Out-File -FilePath $env:GITHUB_PATH -Append
