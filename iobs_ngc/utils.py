@@ -16,6 +16,146 @@ from .parameter_bounds import DEFAULT_PARAM_BOUNDS
 
 _DEFAULT_PARAMS_FILE = Path(__file__).parent / "default_params.json"
 
+# Fixed value of ``nu`` used when neither an explicit argument nor a template
+# parameter is supplied (matches bundled default_params.json).
+_DEFAULT_NU = 4.0
+
+
+# ---------------------------------------------------------------------------
+# Microstructure report
+# ---------------------------------------------------------------------------
+
+# Refined parameters: name -> (group, description).  Descriptions are taken
+# from example/param_descriptors.md ("Relationship to microstructure
+# parameters").  Order here defines the order shown in the report.
+_REFINED_PARAM_INFO = {
+    'a3':     ('microstructure', 'Average layer distance (Å)'),
+    'da3':    ('microstructure', 'Avg − minimal layer distance (Å)'),
+    'sig3':   ('microstructure', 'Disorder of the stacks (std dev of a3)'),
+    'eta':    ('microstructure', 'Homogeneity of the stacks'),
+    'mu':     ('microstructure', 'Shape factor for stack-height distribution'),
+    'beta':   ('microstructure', 'Shape factor for stack-height distribution'),
+    'alpha':  ('microstructure', 'Shape factor for layer-size distribution'),
+    'sig1':   ('microstructure', 'Disorder of the layers (stress and strain)'),
+    'lcc':    ('microstructure', 'Average C–C bond length (Å)'),
+    'q':      ('microstructure', 'Preferred orientation'),
+    'u3':     ('microstructure', 'Thermal motion'),
+    'k':      ('normalization', 'Normalization (intensity scale) constant'),
+    'const1': ('normalization', 'Constant background shift'),
+    'const2': ('normalization', 'Linear background shift'),
+    'g':      ('normalization', 'Exponential damping factor'),
+}
+
+# Calculated parameters: (name, formula, description, fn(refined, nu) -> float).
+# ``fn`` may raise ZeroDivisionError; callers render those as "—".
+_CALCULATED_PARAMS = [
+    ('a3min', 'a3 − da3',        'Minimal layer distance (Å)',
+     lambda p, nu: p['a3'] - p['da3']),
+    ('N',     '(mu+1)/beta',     'Avg. graphene layers per stack',
+     lambda p, nu: (p['mu'] + 1.0) / p['beta']),
+    ('Nm',    'mu/beta',         'Avg. graphene layers per stack',
+     lambda p, nu: p['mu'] / p['beta']),
+    ('Lc',    'N·a3',            'Average stack height (Å)',
+     lambda p, nu: (p['mu'] + 1.0) / p['beta'] * p['a3']),
+    ('kapc',  '1/mu',            'Polydispersity of stack height',
+     lambda p, nu: 1.0 / p['mu']),
+    ('eps3',  'da3/a3min',       'Stack disorder from local strains',
+     lambda p, nu: p['da3'] / (p['a3'] - p['da3'])),
+    ('La',    '(nu+1)/alpha',    'Average graphene layer size (Å)',
+     lambda p, nu: (nu + 1.0) / p['alpha']),
+    ('lm',    'nu/alpha',        'Average chord length (Å)',
+     lambda p, nu: nu / p['alpha']),
+    ('kapa',  '1/nu',            'Polydispersity of chord length',
+     lambda p, nu: 1.0 / nu),
+    ('kapr',  '3π²(1/nu+1)/32−1', 'Polydispersity of layer radius',
+     lambda p, nu: 3.0 * np.pi ** 2 * (1.0 / nu + 1.0) / 32.0 - 1.0),
+]
+
+
+def _fmt_value(value: float) -> str:
+    """Format a numeric value for the report, falling back to a dash."""
+    if value is None or not np.isfinite(value):
+        return "—"
+    return f"{value:.4f}"
+
+
+def microstructure_report(
+    result: FitResult,
+    template_params: Optional[Dict[str, Any]] = None,
+    nu: Optional[float] = None,
+) -> str:
+    """Build a human-readable microstructure report from a fit result.
+
+    The report lists every refined parameter and the microstructure quantities
+    calculated from them (each with a short description), preceded by a minimal
+    fit-quality header (R², RSS, nfev).  It is the physical-interpretation
+    counterpart to :meth:`FitResult.summary`, which reports timing/convergence.
+
+    Parameters
+    ----------
+    result : FitResult
+        Result returned by :class:`~iobs_ngc.IOBSFitter`.
+    template_params : dict, optional
+        Full parameter template.  Only used to source ``nu`` (a fixed, non-fitted
+        parameter) for the calculated quantities.
+    nu : float, optional
+        Explicit value of ``nu``.  Resolution order: this argument →
+        ``template_params['nu']`` → default (``4``).
+
+    Returns
+    -------
+    str
+        Formatted report.  The caller decides whether to print it.
+    """
+    if nu is None:
+        if template_params is not None and 'nu' in template_params:
+            nu = float(template_params['nu'])
+        else:
+            nu = _DEFAULT_NU
+
+    params = result.parameters
+
+    lines = [
+        "─── Microstructure Report " + "─" * 31,
+        f"  R²    : {result.r_squared:.8f}",
+        f"  RSS   : {result.rss:.6e}",
+        f"  nfev  : {result.nfev}",
+    ]
+
+    for group, heading in (
+        ('microstructure', "Refined — microstructure"),
+        ('normalization', "Refined — normalization / background"),
+    ):
+        rows = [
+            (name, params[name], desc)
+            for name, (grp, desc) in _REFINED_PARAM_INFO.items()
+            if grp == group and name in params
+        ]
+        if not rows:
+            continue
+        lines.append("")
+        lines.append(f"  {heading}")
+        lines.append(f"    {'name':<8} {'value':>10}   description")
+        for name, value, desc in rows:
+            lines.append(f"    {name:<8} {_fmt_value(value):>10}   {desc}")
+
+    lines.append("")
+    lines.append("  Calculated — microstructure")
+    lines.append(
+        f"    {'name':<8} {'value':>10}   {'formula':<16} description"
+    )
+    for name, formula, desc, fn in _CALCULATED_PARAMS:
+        try:
+            value = float(fn(params, nu))
+        except (ZeroDivisionError, KeyError, ValueError):
+            value = float('nan')
+        lines.append(
+            f"    {name:<8} {_fmt_value(value):>10}   {formula:<16} {desc}"
+        )
+
+    lines.append("─" * 57)
+    return "\n".join(lines)
+
 
 # ---------------------------------------------------------------------------
 # Data loading helpers
@@ -102,6 +242,15 @@ class FitPattern:
         if self.result is None:
             raise RuntimeError("Call fit() before accessing fitted_params.")
         return self.result.parameters
+
+    def report(self) -> str:
+        """Return the microstructure report for the fit. Requires fit() first.
+
+        See :func:`microstructure_report` for the report contents.
+        """
+        if self.result is None:
+            raise RuntimeError("Call fit() before report().")
+        return microstructure_report(self.result, self._template_params)
 
     def plot(
         self,

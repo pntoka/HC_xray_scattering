@@ -15,4 +15,4 @@ from .parameter_bounds import (                          # noqa: F401
     DEFAULT_STAGE_DEFINITIONS,
 )
 
-from .utils import FitPattern                            # noqa: F401
+from .utils import FitPattern, microstructure_report     # noqa: F401
