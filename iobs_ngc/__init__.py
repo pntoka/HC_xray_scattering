@@ -14,3 +14,5 @@ from .parameter_bounds import (                          # noqa: F401
     DEFAULT_PARAM_BOUNDS,
     DEFAULT_STAGE_DEFINITIONS,
 )
+
+from .utils import FitPattern                            # noqa: F401
