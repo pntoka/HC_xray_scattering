@@ -1,4 +1,4 @@
-# BuildDependencies.cmake - Builds FLINT/ARB and dependencies from source
+# BuildDependencies.cmake - Builds FLINT and dependencies from source
 
 include(ExternalProject)
 
@@ -14,118 +14,90 @@ if(NPROC EQUAL 0)
 endif()
 message(STATUS "Building dependencies with ${NPROC} parallel jobs")
 
-# Windows-specific: Use vcpkg for GMP/MPFR/ARB
+# Windows-specific: Use vcpkg for GMP/MPFR/FLINT
 if(WIN32)
-    message(STATUS "Windows build: using vcpkg for GMP/MPFR/ARB")
-    
+    message(STATUS "Windows build: using vcpkg for GMP/MPFR/FLINT")
+
     find_package(PkgConfig REQUIRED)
-    
+
     pkg_check_modules(gmp REQUIRED IMPORTED_TARGET gmp)
     pkg_check_modules(gmpxx REQUIRED IMPORTED_TARGET gmpxx)
     pkg_check_modules(mpfr REQUIRED IMPORTED_TARGET mpfr)
-    
+
     # Find pthread
     find_library(PTHREAD_LIBRARY
         NAMES pthreadVC3
-        PATHS 
+        PATHS
             C:/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/lib
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib
         NO_DEFAULT_PATH
         REQUIRED
     )
-    
-    # ARB often doesn't provide a .pc file, so find it manually
-    find_library(ARB_LIBRARY
-        NAMES arb
-        PATHS 
+
+    # FLINT 3+ includes arb; find the single flint library
+    find_library(FLINT_LIBRARY
+        NAMES flint
+        PATHS
             C:/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/lib
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib
         NO_DEFAULT_PATH
         REQUIRED
     )
-    
-    find_path(ARB_INCLUDE_DIR
-        NAMES arb.h
-        PATHS 
+
+    find_path(FLINT_INCLUDE_DIR
+        NAMES flint/flint.h
+        PATHS
             C:/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/include
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include
         NO_DEFAULT_PATH
         REQUIRED
     )
-    
-    # Also need FLINT for arb
-    find_library(FLINT_LIBRARY
-        NAMES flint
-        PATHS 
-            C:/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/lib
-            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib
-        NO_DEFAULT_PATH
-        REQUIRED
-    )
-    
-    # Find DLLs for wheel repair
-    find_file(ARB_DLL
-        NAMES arb.dll
-        PATHS 
-            C:/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/bin
-            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin
-        NO_DEFAULT_PATH
-    )
+
+    # Find FLINT DLL for wheel repair
     find_file(FLINT_DLL
         NAMES flint.dll
-        PATHS 
+        PATHS
             C:/vcpkg/installed/${VCPKG_TARGET_TRIPLET}/bin
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin
         NO_DEFAULT_PATH
     )
-    
-    message(STATUS "Found ARB library: ${ARB_LIBRARY}")
-    message(STATUS "Found ARB include: ${ARB_INCLUDE_DIR}")
+
     message(STATUS "Found FLINT library: ${FLINT_LIBRARY}")
+    message(STATUS "Found FLINT include: ${FLINT_INCLUDE_DIR}")
     message(STATUS "Found pthread library: ${PTHREAD_LIBRARY}")
-    if(ARB_DLL)
-        message(STATUS "Found ARB DLL: ${ARB_DLL}")
-    endif()
     if(FLINT_DLL)
         message(STATUS "Found FLINT DLL: ${FLINT_DLL}")
     endif()
-    
-    # Create imported target for pthread (could be static or dynamic)
+
+    # Create imported target for pthread
     add_library(pthread_imported SHARED IMPORTED)
     set_target_properties(pthread_imported PROPERTIES
         IMPORTED_IMPLIB "${PTHREAD_LIBRARY}"
     )
-    
-    # Create imported target for arb
-    add_library(arb_imported SHARED IMPORTED)
-    set_target_properties(arb_imported PROPERTIES
-        IMPORTED_IMPLIB "${ARB_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${ARB_INCLUDE_DIR}"
-    )
-    
-    # Create imported target for flint
+
+    # Create imported target for flint (includes arb in FLINT 3+)
     add_library(flint_imported SHARED IMPORTED)
     set_target_properties(flint_imported PROPERTIES
         IMPORTED_IMPLIB "${FLINT_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${FLINT_INCLUDE_DIR}"
     )
-    
+
     # Bundle everything together
     add_library(flint_external INTERFACE)
-    target_include_directories(flint_external INTERFACE ${ARB_INCLUDE_DIR})
+    target_include_directories(flint_external INTERFACE ${FLINT_INCLUDE_DIR})
     target_link_libraries(flint_external INTERFACE
-        arb_imported
         flint_imported
         PkgConfig::mpfr
         PkgConfig::gmpxx
         PkgConfig::gmp
         pthread_imported
     )
-    
+
     # Create dummy ep_flint target for compatibility
     add_custom_target(ep_flint)
-    
+
     set(FLINT_TARGET flint_external)
-    set(FLINT_INCLUDE_DIRS ${ARB_INCLUDE_DIR})
+    set(FLINT_INCLUDE_DIRS ${FLINT_INCLUDE_DIR})
     return()
 endif()
 
