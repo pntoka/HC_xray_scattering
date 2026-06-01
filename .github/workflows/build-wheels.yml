@@ -154,6 +154,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dist/
-          git commit -m "Add built wheels from ${{ github.ref_name }}" || echo "No changes to commit"
+          # Remove all existing dist files so only the new version remains
+          git rm -rf dist/ --ignore-unmatch
+          # Stage new wheels only — exclude the sdist (.tar.gz) which exceeds
+          # GitHub's 100 MB file size limit; it is already attached to the release
+          find dist/ -name "*.whl" | xargs git add
+          git commit -m "Update dist wheels to ${{ github.ref_name }}" || echo "No changes to commit"
           git push
