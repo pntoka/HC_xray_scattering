@@ -24,9 +24,6 @@ class StageResult:
     convergence_info: str
     retry_count: int = 0
     wall_time_s: float = 0.0          # total wall time for this stage
-    eval_time_mean_ms: float = 0.0    # mean time per residual evaluation
-    eval_time_min_ms: float = 0.0     # fastest single evaluation
-    eval_time_max_ms: float = 0.0     # slowest single evaluation
 
 
 @dataclass
@@ -45,10 +42,6 @@ class FitResult:
 
     def summary(self) -> str:
         """Return a human-readable timing and quality summary string."""
-        throughput = (
-            f"{self.nfev / self.wall_time_s:.1f} eval/s"
-            if self.wall_time_s > 0 else "N/A"
-        )
         lines = [
             "─── IOBSFitter Result " + "─" * 35,
             f"  Status       : {'success' if self.success else 'FAILED'}",
@@ -56,18 +49,15 @@ class FitResult:
             f"  RSS          : {self.rss:.6e}",
             f"  nfev (total) : {self.nfev}",
             f"  Wall time    : {self.wall_time_s:.3f} s",
-            f"  Throughput   : {throughput}",
             "",
-            f"  {'Stage':<22} {'nfev':>6}  {'time(s)':>8}  "
-            f"{'mean(ms)':>9}  {'min(ms)':>8}  {'max(ms)':>8}  {'rss':>12}",
-            "  " + "─" * 90,
+            f"  {'Stage':<22} {'nfev':>6}  {'time(s)':>8}  {'rss':>12}",
+            "  " + "─" * 55,
         ]
         for sr in self.stage_results:
             status = "✓" if sr.success else "✗"
             lines.append(
                 f"  {status} {sr.name:<20} {sr.nfev:>6}  {sr.wall_time_s:>8.3f}  "
-                f"{sr.eval_time_mean_ms:>9.3f}  {sr.eval_time_min_ms:>8.3f}  "
-                f"{sr.eval_time_max_ms:>8.3f}  {sr.rss:>12.4e}"
+                f"{sr.rss:>12.4e}"
             )
         lines.append("─" * 57)
         return "\n".join(lines)
@@ -319,27 +309,10 @@ class IOBSFitter:
         last_error = ""
 
         for attempt in range(self.max_retries):
-            # Per-attempt evaluation timer – reset each retry so stats reflect
-            # only the successful (or last-attempt) run.
-            eval_times: List[float] = []
-
-            def _timed_residuals(
-                stage_vals: np.ndarray,
-                s: np.ndarray,
-                y: np.ndarray,
-                current_scaled: Dict[str, float],
-                names_to_fit: List[str],
-                _times: List[float] = eval_times,
-            ) -> np.ndarray:
-                t0 = time.perf_counter()
-                out = self._residuals(stage_vals, s, y, current_scaled, names_to_fit)
-                _times.append((time.perf_counter() - t0) * 1e3)  # ms
-                return out
-
             try:
                 t_stage = time.perf_counter()
                 res = least_squares(
-                    fun=_timed_residuals,
+                    fun=self._residuals,
                     x0=np.clip(p0, lb + 1e-9, ub - 1e-9),
                     bounds=(lb, ub),
                     method='trf',
@@ -349,7 +322,6 @@ class IOBSFitter:
                 stage_wall = time.perf_counter() - t_stage
                 total_nfev += res.nfev
 
-                times_arr = np.asarray(eval_times) if eval_times else np.array([0.0])
                 fitted = {
                     name: float(val)
                     for name, val in zip(names_to_fit, res.x)
@@ -365,9 +337,6 @@ class IOBSFitter:
                     convergence_info=res.message,
                     retry_count=attempt,
                     wall_time_s=stage_wall,
-                    eval_time_mean_ms=float(times_arr.mean()),
-                    eval_time_min_ms=float(times_arr.min()),
-                    eval_time_max_ms=float(times_arr.max()),
                 ), total_nfev
 
             except Exception as exc:
