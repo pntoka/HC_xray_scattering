@@ -27,7 +27,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path C:\vcpkg\binarycache | Out-Null
           echo "VCPKG_DEFAULT_BINARY_CACHE=C:\vcpkg\binarycache" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "VCPKG_BINARY_SOURCES=clear;files,C:\vcpkg\binarycache,readwrite" | Out-File -FilePath $env:GITHUB_ENV -Append
-
       # Windows: Cache vcpkg installed packages
       - name: Cache vcpkg installed (Windows)
         if: runner.os == 'Windows'
@@ -37,7 +36,6 @@ jobs:
           key: ${{ runner.os }}-vcpkg-x64-windows-${{ hashFiles('vcpkg.json', '.github/workflows/build-wheels.yml') }}
           restore-keys: |
             ${{ runner.os }}-vcpkg-x64-windows-
-
       # Windows: Cache vcpkg downloads
       - name: Cache vcpkg downloads (Windows)
         if: runner.os == 'Windows'
@@ -47,7 +45,6 @@ jobs:
           key: ${{ runner.os }}-vcpkg-downloads
           restore-keys: |
             ${{ runner.os }}-vcpkg-downloads
-
       # Windows: Cache MSYS2 tools (prevents re-downloading packages)
       - name: Cache vcpkg MSYS2 tools (Windows)
         if: runner.os == 'Windows'
@@ -57,7 +54,6 @@ jobs:
           key: ${{ runner.os }}-vcpkg-msys2-tools
           restore-keys: |
             ${{ runner.os }}-vcpkg-msys2-tools
-
       # Windows: Cache vcpkg binary cache
       - name: Cache vcpkg binary cache (Windows)
         if: runner.os == 'Windows'
@@ -67,7 +63,6 @@ jobs:
           key: ${{ runner.os }}-vcpkg-binarycache-x64-windows-${{ hashFiles('vcpkg.json', '.github/workflows/build-wheels.yml') }}
           restore-keys: |
             ${{ runner.os }}-vcpkg-binarycache-x64-windows-
-
       # Windows: Install vcpkg dependencies
       - name: Install vcpkg dependencies (Windows)
         if: runner.os == 'Windows'
@@ -88,7 +83,6 @@ jobs:
           # Add pkgconf to PATH for subsequent steps
           echo "C:\vcpkg\installed\x64-windows\tools\pkgconf" | Out-File -FilePath $env:GITHUB_PATH -Append
           echo "C:\vcpkg\installed\x64-windows\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.16.5
         env:
