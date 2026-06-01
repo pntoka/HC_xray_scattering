@@ -14,7 +14,7 @@ std::vector<double> IOBSCalculator::calculate(
         Calculations calculations;
         
         #pragma omp for schedule(dynamic, 10)
-        for (size_t i = 0; i < s_values.size(); ++i) {
+        for (int i = 0; i < static_cast<int>(s_values.size()); ++i) {
             results[i] = calculations.iObs(
                 params.useA, params.density, params.absorptionCorrection,
                 params.sampleThickness, params.transmission,
