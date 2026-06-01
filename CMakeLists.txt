@@ -282,6 +282,8 @@ if(APPLE)
         ERROR_QUIET
     )
     if(LIBOMP_PREFIX)
+        set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include")
+        set(OpenMP_C_LIB_NAMES "omp")
         set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include")
         set(OpenMP_CXX_LIB_NAMES "omp")
         set(OpenMP_omp_LIBRARY "${LIBOMP_PREFIX}/lib/libomp.dylib")
