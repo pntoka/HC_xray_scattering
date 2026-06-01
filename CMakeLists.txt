@@ -272,6 +272,21 @@ message(STATUS "======================================")
 message(STATUS "")
 
 # Find OpenMP
+# Apple Clang does not bundle OpenMP; detect the Homebrew libomp prefix at
+# configure time so the build works on both arm64 and x86_64 runners.
+if(APPLE)
+    execute_process(
+        COMMAND brew --prefix libomp
+        OUTPUT_VARIABLE LIBOMP_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(LIBOMP_PREFIX)
+        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include")
+        set(OpenMP_CXX_LIB_NAMES "omp")
+        set(OpenMP_omp_LIBRARY "${LIBOMP_PREFIX}/lib/libomp.dylib")
+    endif()
+endif()
 find_package(OpenMP REQUIRED)
 
 # # Link OpenMP to your executable/library

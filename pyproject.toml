@@ -44,9 +44,6 @@ environment = { MACOSX_DEPLOYMENT_TARGET = "14.0" }
 "cmake.define.USE_SYSTEM_LIBS" = "ON"
 "cmake.define.FETCH_BOOST" = "OFF"
 "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "14.0"
-"cmake.define.OpenMP_CXX_FLAGS" = "-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include"
-"cmake.define.OpenMP_CXX_LIB_NAMES" = "omp"
-"cmake.define.OpenMP_omp_LIBRARY" = "/opt/homebrew/opt/libomp/lib/libomp.dylib"
 "cmake.args" = "-G Ninja"
 
 [tool.cibuildwheel.windows]
