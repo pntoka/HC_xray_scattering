@@ -332,7 +332,7 @@ std::complex<double> Calculations::F(double m, double nu, double lm, double lcc,
 
 //analytical expression for J_hk without epsilon_1
 double Calculations::Jhk(double nu, double lm, double lcc, double sig1, int h, int k, double q, double s){
-    s_hk = shk(h,k,lcc);
+    double s_hk = shk(h,k,lcc);  // local variable – was incorrectly writing to file-scope static
 	int nu_round;
 	if ( nu - floor(nu) == 0.5 )
 		if (((int)(floor(nu))) % 2 == 0)

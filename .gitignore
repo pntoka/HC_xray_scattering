@@ -5,3 +5,4 @@ example/*.png
 /wheelhouse
 /.vs
 /.vscode
+__pycache__/
