@@ -37,6 +37,31 @@ The 15 fittable structural parameters and their physical meanings:
 | `const2` | Background slope |
 | `k` | Intensity scale factor |
 
+For the full list of parameters and their detailed descriptions, see the
+upstream [osswaldo/OctCarb](https://github.com/osswaldo/OctCarb) project.
+
+#### Instrument-dependent parameters
+
+Three additional parameters describe the measurement geometry rather than the
+sample. They are **fixed during fitting (not refined)** and **must be supplied
+by the user** to match their instrument — the bundled defaults are only
+placeholders:
+
+| Parameter | Description |
+|-----------|-------------|
+| `par_r` | Goniometer radius (cm; fixed by the experiment) |
+| `par_delta` | Divergence angle (°; set by the user) |
+| `par_l` | Irradiated sample length (cm; fixed during measurement) |
+
+Provide them inline via the `params` dict argument:
+
+```python
+session = FitPattern("sample.xy", params={"par_r": 14, "par_delta": 4, "par_l": 7})
+```
+
+or in a `params_json` file. Any keys not given fall back to the bundled
+defaults.
+
 ---
 
 ## Quick start
@@ -61,12 +86,61 @@ session.plot()                               # display interactively
 session.plot(save_path="fit.png", show=False)  # save to file
 ```
 
-Providing a custom parameters JSON overrides any matching keys; the rest are filled from
-the bundled defaults:
+If your data file already stores the scattering vector `s` (Å⁻¹) in the first
+column instead of 2θ, pass `x_is_s=True` to skip the 2θ→s conversion:
 
 ```python
+session = FitPattern("sample.xy", x_is_s=True)
+```
+
+Providing custom parameters overrides any matching keys; the rest are filled from
+the bundled defaults. You can pass them inline as a dict or point to a JSON file:
+
+```python
+session = FitPattern("sample.xy", params={"par_r": 14, "par_delta": 4, "par_l": 7})
 session = FitPattern("sample.xy", params_json="my_params.json")
 ```
+
+### Getting a microstructure report
+
+After fitting, `report()` returns a human-readable summary: a fit-quality
+header (R², RSS, nfev), the refined structural and background parameters, and
+the microstructure quantities calculated from them (e.g. crystallite sizes).
+
+```python
+session = FitPattern("sample.xy")
+session.fit()
+print(session.report())
+```
+
+For the lower-level workflow, build the report directly from a `FitResult`:
+
+```python
+from iobs_ngc import IOBSFitter, microstructure_report
+
+result = IOBSFitter(template_params=template_params).fit(s, y, initial_params)
+print(microstructure_report(result, template_params))
+```
+
+### Smoothing the data
+
+Set `smooth=True` to apply a Savitzky-Golay filter to the (interpolated)
+intensity before fitting — useful for suppressing high-frequency noise in
+experimental patterns. The window length and polynomial order are configurable:
+
+```python
+session = FitPattern(
+    "sample.xy",
+    smooth=True,
+    savgol_window=11,     # filter window length (odd, > polyorder)
+    savgol_polyorder=3,   # polynomial order
+)
+session.fit()
+print(session.report())
+```
+
+The same options are available on the lower-level `interp_spectra` helper
+(`smooth`, `window_length`, `polyorder`).
 
 Scipy solver tolerances can be tightened or relaxed via `ls_kwargs`:
 
@@ -148,7 +222,7 @@ If you need to build from source on Windows, use [vcpkg](https://github.com/micr
 
 2. Install dependencies (dynamic libraries):
    ```bash
-   .\vcpkg.exe install gmp:x64-windows mpfr:x64-windows flint:x64-windows arb:x64-windows
+   .\vcpkg.exe install gmp:x64-windows mpfr:x64-windows flint:x64-windows
    ```
 
 3. Set environment variables and install:
@@ -173,7 +247,7 @@ pip install --find-links dist/ iobs_ngc
 To build from source using existing system libraries, first install the required dependencies via Homebrew:
 
 ```bash
-brew install gmp mpfr flint boost
+brew install gmp mpfr flint boost libomp
 ```
 
 Then install the package:
