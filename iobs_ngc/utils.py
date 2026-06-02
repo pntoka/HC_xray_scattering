@@ -10,6 +10,7 @@ from typing import Dict, Optional, Any
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.signal import savgol_filter
 
 from .fitter import IOBSFitter, FitResult
 from .parameter_bounds import DEFAULT_PARAM_BOUNDS
@@ -174,12 +175,45 @@ def twoThetaToS(x: np.ndarray, wavelength: float = 1.5418) -> np.ndarray:
     return 2 / wavelength * np.sin(x / 2 * np.pi / 180)
 
 
-def interp_spectra(path: str, file_name: str):
+def smooth_spectra(
+    y: np.ndarray,
+    window_length: int = 11,
+    polyorder: int = 3,
+) -> np.ndarray:
+    """Smooth intensity data with a Savitzky-Golay filter.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        Intensity values to smooth.
+    window_length : int
+        Length of the filter window (must be odd and > polyorder).
+    polyorder : int
+        Order of the polynomial used to fit the samples.
+
+    Returns
+    -------
+    np.ndarray
+        Smoothed intensity array, same shape as ``y``.
+    """
+    return savgol_filter(y, window_length=window_length, polyorder=polyorder)
+
+
+def interp_spectra(
+    path: str,
+    file_name: str,
+    smooth: bool = False,
+    window_length: int = 11,
+    polyorder: int = 3,
+    x_is_s: bool = False,
+):
     data = open_xy(path, file_name)
-    x = twoThetaToS(data[:, 0])
+    x = data[:, 0] if x_is_s else twoThetaToS(data[:, 0])
     test_s = np.linspace(x.min(), x.max(), 1000)
     f_interp = interp1d(x, data[:, 1])
     y_interp = f_interp(test_s)
+    if smooth:
+        y_interp = smooth_spectra(y_interp, window_length, polyorder)
     return test_s, y_interp
 
 
@@ -193,27 +227,54 @@ class FitPattern:
     Parameters
     ----------
     xy_file : str or Path
-        Path to the 2theta-format ``.xy`` data file.
+        Path to the ``.xy`` data file.  By default the first column is treated
+        as 2theta (degrees); set ``x_is_s=True`` if it is already the
+        scattering vector ``s`` (Å⁻¹).
     params_json : str or Path, optional
         Path to a JSON file with IOBSParameters values.  Any keys present
         override the package defaults; missing keys are filled from the
         bundled ``default_params.json``.
+    params : dict, optional
+        Parameter overrides supplied inline as a dict (e.g. instrument-dependent
+        values such as ``par_r``/``par_delta``/``par_l``).  Applied on top of the
+        package defaults and ``params_json``; if both are given the dict wins.
     ls_kwargs : dict, optional
         Extra keyword arguments forwarded to ``scipy.optimize.least_squares``
         (``max_nfev``, ``ftol``, ``xtol``, ``gtol``, ``diff_step``).
+    smooth : bool
+        If True, apply a Savitzky-Golay filter to the interpolated intensity
+        data before fitting.  Defaults to False.
+    savgol_window : int
+        Window length for the Savitzky-Golay filter when ``smooth`` is True
+        (must be odd and > ``savgol_polyorder``).  Defaults to 11.
+    savgol_polyorder : int
+        Polynomial order for the Savitzky-Golay filter when ``smooth`` is True.
+        Defaults to 3.
+    x_is_s : bool
+        If True, treat the first data column as the scattering vector ``s``
+        (Å⁻¹) directly instead of converting it from 2theta.  Defaults to False.
     """
 
     def __init__(
         self,
         xy_file: str | Path,
         params_json: Optional[str | Path] = None,
+        params: Optional[Dict[str, Any]] = None,
         ls_kwargs: Optional[Dict[str, Any]] = None,
+        smooth: bool = False,
+        savgol_window: int = 11,
+        savgol_polyorder: int = 3,
+        x_is_s: bool = False,
     ):
         self._xy_file = Path(xy_file)
         self._ls_kwargs = ls_kwargs
+        self._smooth = smooth
+        self._savgol_window = savgol_window
+        self._savgol_polyorder = savgol_polyorder
+        self._x_is_s = x_is_s
 
         self._template_params, self._initial_params = self._build_params(
-            params_json
+            params_json, params
         )
 
         self.result: Optional[FitResult] = None
@@ -227,7 +288,11 @@ class FitPattern:
     def fit(self) -> FitResult:
         """Load the data and run the multistage fit. Returns the FitResult."""
         self._s, self._y = interp_spectra(
-            str(self._xy_file.parent), self._xy_file.name
+            str(self._xy_file.parent), self._xy_file.name,
+            smooth=self._smooth,
+            window_length=self._savgol_window,
+            polyorder=self._savgol_polyorder,
+            x_is_s=self._x_is_s,
         )
         fitter = IOBSFitter(
             template_params=self._template_params,
@@ -310,7 +375,7 @@ class FitPattern:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _build_params(self, params_json):
+    def _build_params(self, params_json, params=None):
         with open(_DEFAULT_PARAMS_FILE) as fh:
             template = json.load(fh)
 
@@ -318,6 +383,9 @@ class FitPattern:
             with open(params_json) as fh:
                 user = json.load(fh)
             template.update(user)
+
+        if params is not None:
+            template.update(params)
 
         initial = {
             k: (lo + hi) / 2.0
